@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
+import re
 from pathlib import Path
 import shutil
 import threading
@@ -28,6 +29,7 @@ _lock = threading.Lock()
 _sample = {}
 _cpu = None
 _files = {}
+_profiles = {}
 _pool = ThreadPoolExecutor(max_workers=3)
 
 
@@ -57,6 +59,22 @@ def tail_records(path, cutoff):
         samples.popleft()
     _files[path] = (stat.st_ino, offset, samples)
     return samples
+
+
+def kernel_profile(path, frame):
+    """GPU worker logs the first-frame ORT proof during warmup."""
+    if frame.get("cuda_kernels") is not None and frame.get("cpu_kernels") is not None:
+        return {"cuda": frame["cuda_kernels"], "cpu": frame["cpu_kernels"]}
+    if path not in _profiles:
+        try:
+            with path.open("rb") as log:
+                prefix = log.read(256 * 1024)
+        except FileNotFoundError:
+            return None
+        match = re.search(rb"ort_profile_cuda_kernels=(\d+) ort_profile_cpu_kernels=(\d+)", prefix)
+        if match:
+            _profiles[path] = {"cuda": int(match[1]), "cpu": int(match[2])}
+    return _profiles.get(path)
 
 
 def workload(now):
@@ -92,6 +110,8 @@ def workload(now):
                 "run": path.parent.name, "slot": last["stream"], "provider": last["provider"],
                 "at": last["wall_time"], "active": not complete and now - last["wall_time"] <= STALE,
                 "warmup": last["warmup"],
+                "profile": kernel_profile(path.with_name(f"worker-{last['stream']}.log"), last)
+                           if last["provider"] == "cuda" else None,
                 "input_fps": last["input_fps"], "decoded_fps": fps, "inference_fps": fps,
                 "detection_rate": sum(r["detections"] for r in recent[1:]) / span if span > 0 else None,
                 "frames": last["index"] + 1, "skipped": 0, "dropped": 0,
@@ -101,6 +121,7 @@ def workload(now):
             errors += 1
     for path in set(_files) - found:
         del _files[path]
+        _profiles.pop(path.with_name(path.stem.replace("stream-", "worker-") + ".log"), None)
 
     # Legacy and new single-observation reports both record one SQL visibility sample.
     latest = None
@@ -288,6 +309,7 @@ def metrics():
         "stream_frames": "Frames processed in the current warmup or measurement phase.",
         "stream_skipped": "Frames intentionally skipped in the current all-frame benchmark.",
         "stream_dropped": "Frames dropped in the current all-frame benchmark.",
+        "profiled_kernel_count": "Operators executed in the GPU worker first-frame ORT profile.",
         "stage_mean_ms": "Trailing five-second mean wall time per instrumented operation in milliseconds.",
     }
 
@@ -327,6 +349,9 @@ def metrics():
             for field in ("input_fps", "decoded_fps", "inference_fps", "detection_rate", "lag_ms", "frames",
                           "skipped", "dropped"):
                 add("stream_" + field, stream[field], labels)
+            if stream["profile"]:
+                for provider, count in stream["profile"].items():
+                    add("profiled_kernel_count", count, labels[:-1] + ',execution="' + provider + '"}')
             for stage, duration in stream["stages"].items():
                 add("stage_mean_ms", duration, labels[:-1] + ',stage="' + stage.removesuffix("_ms") + '"}')
     return Response("\n".join(lines) + "\n", content_type="text/plain; version=0.0.4; charset=utf-8")

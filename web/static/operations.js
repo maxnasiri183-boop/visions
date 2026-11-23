@@ -42,7 +42,13 @@ function details(id, pairs) {
 function stageDetails() {
   const stream = current.streams.find(row => key(row) === $("stage-slot").value);
   text("stage-note", stream ? "Mean over the last 5 s of this stream. Crop and publication include detections only. Sampled at " + utc(stream.at) + "." : "Awaiting instrumented feed samples.");
-  details("stages", Object.entries(stageNames).map(([field, label]) => [label, unit(stream?.stages[field], "ms", 2)]));
+  const fields = Object.entries(stageNames).map(([field, label]) => [label, unit(stream?.stages[field], "ms", 2)]);
+  if (stream?.provider === "cuda") {
+    const proof = stream.profile;
+    fields.push(["First inference · profiled kernels", proof ? proof.cuda + " CUDA / " + proof.cpu + " CPU" : "Unavailable"]);
+    if (proof?.cpu) fields.push(["Provider fallback", "CPU operators in GPU profile"]);
+  }
+  details("stages", fields);
 }
 const key = row => row.run + "/" + row.slot;
 function render(data) {
@@ -62,7 +68,11 @@ function render(data) {
   text("latency-note", "p50 " + unit(data.latency.p50,"s",2) + " · " + number(data.latency.count,0) + " observations in 5 min");
   const gpu = data.host.gpu;
   text("util", unit(gpu?.util, "%", 0));
-  text("gpu-note", gpu ? gpu.name + " · " + number(gpu.used/1024,1) + " / " + number(gpu.total/1024,1) + " GiB" : "GPU sampler unavailable or stale");
+  const cudaStreams = active.filter(stream => stream.provider === "cuda");
+  const verified = cudaStreams.filter(stream => stream.profile?.cuda > 0).length;
+  const fallback = cudaStreams.some(stream => stream.profile?.cpu > 0);
+  const gpuStatus = fallback ? "CPU fallback detected" : cudaStreams.length ? verified + " / " + cudaStreams.length + " active workers verified on CUDA" : "No active CUDA benchmark streams";
+  text("gpu-note", (gpu ? gpu.name + " · " + number(gpu.used/1024,1) + " / " + number(gpu.total/1024,1) + " GiB" : "Sampler unavailable") + " · " + gpuStatus);
   text("streams-note", "Five-second frame completion rates. Streams without a sample for 5 s are marked stale.");
   rows("streams", data.streams.map(r => [
     r.run + " / " + r.slot, [r.provider.toUpperCase(),r.warmup ? "warm-up" : "",r.active ? "live" : "stale"].filter(Boolean).join(" · "),
