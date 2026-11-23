@@ -1,0 +1,552 @@
+{
+  "title": "Pipeline operations",
+  "uid": "visions-pipeline",
+  "tags": [
+    "visions"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "editable": false,
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Feed throughput",
+      "description": "All active sustained streams. Rates use completed frames over the last five seconds.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fps",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(visions_stream_input_fps)",
+          "legendFormat": "Source target",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(visions_stream_decoded_fps)",
+          "legendFormat": "Decoded",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(visions_stream_inference_fps)",
+          "legendFormat": "Inference",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Frame ingress to first SQL visibility",
+      "description": "Nearest-rank percentiles across samples first seen in the previous five minutes.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_sql_visibility_seconds",
+          "legendFormat": "{{stat}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Kafka backlog",
+      "description": "Next broker offset minus one minus the last applied Routine Load offset.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_kafka_backlog_records",
+          "legendFormat": "Unconsumed records",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "SQL visibility sample count",
+      "description": "Successful unique detections; repeated SQL polls and replay events are excluded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_sql_visibility_samples",
+          "legendFormat": "Observations in 5 min",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Worker stages",
+      "description": "Trailing five-second means. Upload and publication statistics include frames with detections only.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_stage_mean_ms",
+          "legendFormat": "{{provider}} \u00b7 slot {{slot}} \u00b7 {{stage}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Worker playout delay",
+      "description": "Wall-clock delay relative to scheduled media PTS.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_stream_lag_ms",
+          "legendFormat": "{{provider}} \u00b7 slot {{slot}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Host utilization",
+      "description": "Device-wide readings. ONNX provider assignment is verified separately using worker profiles.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_host_cpu_percent",
+          "legendFormat": "CPU busy",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_gpu_utilization_percent",
+          "legendFormat": "GPU utilization",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Device memory",
+      "description": "Graphics memory usage measured by the NVIDIA driver.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decmbytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_gpu_memory_used_mib * 1.048576",
+          "legendFormat": "GPU used (MB)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Service readiness",
+      "description": "1 indicates ready, 0 indicates a failed probe.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_service_up",
+          "legendFormat": "{{service}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_routine_load_running",
+          "legendFormat": "Routine Load running",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "up{job=\"visions\"}",
+          "legendFormat": "Review metrics scrape",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Storage and host memory",
+      "description": "Disk headroom for private data in the Review container.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom",
+          "displayMode": "list"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_volume_available_bytes",
+          "legendFormat": "Disk available",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_host_memory_used_bytes",
+          "legendFormat": "RAM used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ]
+    }
+  ]
+}
