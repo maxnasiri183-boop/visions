@@ -1,0 +1,8 @@
+/private/
+/.env
+/.venv/
+/samples/
+**/.gradle/
+**/build/
+**/__pycache__/
+**/.ipynb_checkpoints/

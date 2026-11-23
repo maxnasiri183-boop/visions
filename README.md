@@ -2,7 +2,11 @@
 
 A CPU-based Python sample for detecting faces with YuNet and comparing two aligned face embeddings with SFace. Detection returns pixel coordinates from the upper-left corner. Verification expects exactly one detected face per image and returns a cosine similarity and a match decision.
 
-## Run
+## File feed and StarRocks
+
+The first Java 21 milestone replays a local clip at a configurable speed and traces one selected face through S3 and Kafka to a StarRocks primary-key row. The acceptance runner replays the same observation and compares the stored crop pixel by pixel. [راهنمای فارسی اجرا و بازبینی](docs/first-feed.fa.md)
+
+## Run the Python sample
 
 From this directory with Python 3.10 or newer, run the following commands. Internet access is needed to fetch models and sample photos on first use.
 

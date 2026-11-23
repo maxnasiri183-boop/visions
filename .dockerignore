@@ -1,0 +1,11 @@
+**
+!settings.gradle
+!build.gradle
+!contracts/
+!contracts/**
+!vision-onnx/
+!vision-onnx/**
+!detection-worker/
+!detection-worker/**
+**/build/
+**/.gradle/
