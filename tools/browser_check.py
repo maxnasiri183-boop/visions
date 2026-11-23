@@ -23,6 +23,7 @@ def check(url, executable):
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(url)
         start(page, 5)
+        expect(page.locator("video")).to_have_js_property("playbackRate", 2)
         box = page.get_by_role("button", name="Inspect detected face")
         box.click()
         expect(page.locator("#crop")).to_have_js_property("naturalWidth", 92)

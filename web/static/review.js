@@ -58,6 +58,8 @@ function render() {
     });
   }
   if (!run) return;
+  const playbackRate = report.speed ?? run.speed ?? 1;
+  if (video.playbackRate !== playbackRate) video.playbackRate = playbackRate;
   el("status").textContent = {
     saved: "Saved run",
     live: "Live job",
