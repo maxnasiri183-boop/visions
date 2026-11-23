@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Review · Visions</title><link rel="stylesheet" href="/static/review.css"><script type="module" src="/static/review.js"></script></head>
+<body><header><a class="brand" href="/">Visions</a><nav><a aria-current="page" href="/">Review</a><a href="/operations">Operations</a></nav></header>
+<main><div class="heading"><div><h1>Feed review</h1><p>Inspect an observation from frame to database.</p></div><button id="new">New run</button></div>
+<div id="message" role="alert" hidden></div>
+<div class="grid"><section class="pane viewer"><div class="bar"><h2>Feed monitor</h2><span>512 × 512 · 10 fps</span></div>
+<div class="stage"><div class="surface"><video id="video" muted playsinline preload="auto" src="/media/feed.webm"></video><img id="still" src="/media/5.png" alt="Original decoded frame"><button id="box" aria-label="Inspect detected face" hidden></button></div></div>
+<div class="transport"><button id="play">Play</button><input type="range" id="slider" min="0" max="19" value="5" aria-label="Frame index"><output id="time">0.50 s</output></div>
+<div class="foot"><strong id="frame"></strong><div><button id="prev" aria-label="Previous frame">←</button> <button id="next" aria-label="Next frame">→</button></div></div>
+</section>
+<aside class="pane"><div class="bar"><h2>Observation</h2><span id="status"></span></div>
+<div class="body"><label for="runs">Run</label><select id="runs"></select><p id="stage"></p>
+<p id="hint" role="status"></p><div id="detail" hidden><div class="crop"><img id="crop" alt="Face crop retrieved from object storage"><div><small>Detection confidence</small><strong id="confidence"></strong></div></div>
+<dl id="fields"></dl><label for="identity">Detection ID</label><div class="copy"><input readonly id="identity"><button id="copy">Copy</button></div>
+<details id="sql"><summary>Matching StarRocks row</summary><pre id="row"></pre></details><h3>Replay evidence</h3><p id="evidence"></p><button id="replay">Replay observation</button></div></div></aside></div>
+<dialog id="form"><form method="dialog"><h2>Start a fixed-clip run</h2><p>Decode 20 frames and run YuNet on one selected frame.</p><label for="target">Inference frame (0–19)</label><input type="number" id="target" min="0" max="19" value="5" required><label for="speed">Feed playback speed</label><select id="speed"><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select><div class="actions"><button value="cancel" formnovalidate>Cancel</button><button value="start">Start run</button></div></form></dialog></main></body></html>
