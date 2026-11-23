@@ -1,4 +1,5 @@
 """Exercise the running Review workspace. Creates one face run and one blank run."""
+
 import argparse
 
 from playwright.sync_api import expect, sync_playwright
@@ -44,7 +45,9 @@ def check(url, executable):
             page.locator("#slider").press("ArrowRight")
         box.click()
         page.get_by_role("button", name="Replay observation").click()
-        expect(page.locator("#evidence")).to_contain_text("1 logical row after replay", timeout=210_000)
+        expect(page.locator("#evidence")).to_contain_text(
+            "1 logical row after replay", timeout=210_000
+        )
         print(identity, page.locator("#evidence").inner_text(), flush=True)
         page.reload()
         box.click()
