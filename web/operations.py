@@ -305,12 +305,12 @@ def metrics():
         "stream_decoded_fps": "Decoded frame completions per second in the trailing five seconds.",
         "stream_inference_fps": "Inference frame completions per second in the trailing five seconds.",
         "stream_detection_rate": "Detected faces per second in the trailing five seconds.",
-        "stream_lag_ms": "Most recent delay relative to scheduled media playout in milliseconds.",
+        "stream_lag_seconds": "Most recent delay relative to scheduled media playout in seconds.",
         "stream_frames": "Frames processed in the current warmup or measurement phase.",
         "stream_skipped": "Frames intentionally skipped in the current all-frame benchmark.",
         "stream_dropped": "Frames dropped in the current all-frame benchmark.",
-        "profiled_kernel_count": "Operators executed in the GPU worker first-frame ORT profile.",
-        "stage_mean_ms": "Trailing five-second mean wall time per instrumented operation in milliseconds.",
+        "profiled_kernel_executions": "Operators executed in the GPU worker first-frame ORT profile.",
+        "stage_mean_seconds": "Trailing five-second mean wall time per instrumented operation in seconds.",
     }
 
     def add(name, value, labels=""):
@@ -346,12 +346,13 @@ def metrics():
         if stream["active"]:
             labels = ('{slot="' + str(int(stream["slot"])) + '",provider="' + stream["provider"] +
                       '",run="' + stream["run"] + '"}')
-            for field in ("input_fps", "decoded_fps", "inference_fps", "detection_rate", "lag_ms", "frames",
+            for field in ("input_fps", "decoded_fps", "inference_fps", "detection_rate", "frames",
                           "skipped", "dropped"):
                 add("stream_" + field, stream[field], labels)
+            add("stream_lag_seconds", stream["lag_ms"] / 1000, labels)
             if stream["profile"]:
                 for provider, count in stream["profile"].items():
-                    add("profiled_kernel_count", count, labels[:-1] + ',execution="' + provider + '"}')
+                    add("profiled_kernel_executions", count, labels[:-1] + ',execution="' + provider + '"}')
             for stage, duration in stream["stages"].items():
-                add("stage_mean_ms", duration, labels[:-1] + ',stage="' + stage.removesuffix("_ms") + '"}')
+                add("stage_mean_seconds", duration / 1000 if duration is not None else None, labels[:-1] + ',stage="' + stage.removesuffix("_ms") + '"}')
     return Response("\n".join(lines) + "\n", content_type="text/plain; version=0.0.4; charset=utf-8")

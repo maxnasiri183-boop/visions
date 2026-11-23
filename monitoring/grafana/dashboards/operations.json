@@ -263,7 +263,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "visions_stage_mean_ms",
+          "expr": "(visions_stage_mean_seconds * 1000) or visions_stage_mean_ms",
           "legendFormat": "{{provider}} \u00b7 slot {{slot}} \u00b7 {{stage}}",
           "datasource": {
             "type": "prometheus",
@@ -311,7 +311,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "visions_stream_lag_ms",
+          "expr": "(visions_stream_lag_seconds * 1000) or visions_stream_lag_ms",
           "legendFormat": "{{provider}} \u00b7 slot {{slot}}",
           "datasource": {
             "type": "prometheus",
@@ -484,6 +484,15 @@
           "refId": "C",
           "expr": "up{job=\"visions\"}",
           "legendFormat": "Review metrics scrape",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "visions_container_healthy",
+          "legendFormat": "{{service}} health check",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
