@@ -402,5 +402,573 @@
         }
       ]
     }
+  ],
+  "input_reuse_prototype": [
+    {
+      "run": "bench-b82a5fef7d46",
+      "provider": "cuda",
+      "image_id": "sha256:fd400fd084d7200352ef33669d017d91e81f2a461c241b3fa36eca5ddd8e1370",
+      "start_utc": "2026-11-23T21:55:14.045922+00:00",
+      "streams": 1,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 300,
+      "duration_s": 30.309078454971313,
+      "target_fps": 10,
+      "inference_fps": 9.898024463056343,
+      "per_stream_fps": [
+        9.898024463056343
+      ],
+      "dropped_frames": 0,
+      "detections": 150,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.422942876815796,
+        "p95": 5.867454290390015
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.416007,
+        "preprocess_ms": 14.056292,
+        "inference_ms": 7.994333,
+        "crop_upload_ms": 93.99236,
+        "manifest_io_ms": 65.260702,
+        "kafka_publish_ms": 11.716324,
+        "lag_ms": 1244.551973
+      },
+      "gpu_samples": 28,
+      "mean_gpu_pct": 1.2142857142857142,
+      "peak_vram_mib": 481,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-a799738d4c34",
+      "provider": "cuda",
+      "image_id": "sha256:fd400fd084d7200352ef33669d017d91e81f2a461c241b3fa36eca5ddd8e1370",
+      "start_utc": "2026-11-23T21:56:07.296214+00:00",
+      "streams": 2,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 600,
+      "duration_s": 31.570785999298096,
+      "target_fps": 20,
+      "inference_fps": 19.004911693150106,
+      "per_stream_fps": [
+        9.502455846575053,
+        9.529319584329127
+      ],
+      "dropped_frames": 0,
+      "detections": 300,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.196812629699707,
+        "p95": 5.7019476890563965
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.261514,
+        "preprocess_ms": 16.014644,
+        "inference_ms": 9.442844,
+        "crop_upload_ms": 53.580129,
+        "manifest_io_ms": 57.250996,
+        "kafka_publish_ms": 10.10047,
+        "lag_ms": 2446.058314
+      },
+      "gpu_samples": 29,
+      "mean_gpu_pct": 3.1379310344827585,
+      "peak_vram_mib": 959,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-e2fbce53bf5d",
+      "provider": "cuda",
+      "image_id": "sha256:fd400fd084d7200352ef33669d017d91e81f2a461c241b3fa36eca5ddd8e1370",
+      "start_utc": "2026-11-23T21:57:03.912839+00:00",
+      "streams": 4,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 1200,
+      "duration_s": 31.043161392211914,
+      "target_fps": 40,
+      "inference_fps": 38.655856755009985,
+      "per_stream_fps": [
+        9.668947684940896,
+        9.663964188752496,
+        9.666766786994158,
+        9.664275557788628
+      ],
+      "dropped_frames": 0,
+      "detections": 600,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.257969379425049,
+        "p95": 5.649287939071655
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.088306,
+        "preprocess_ms": 13.11734,
+        "inference_ms": 7.891803,
+        "crop_upload_ms": 45.042421,
+        "manifest_io_ms": 47.436307,
+        "kafka_publish_ms": 10.853919,
+        "lag_ms": 285.260889
+      },
+      "gpu_samples": 28,
+      "mean_gpu_pct": 5.892857142857143,
+      "peak_vram_mib": 1914,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-04e72acd74ca",
+      "provider": "cuda",
+      "image_id": "sha256:fd400fd084d7200352ef33669d017d91e81f2a461c241b3fa36eca5ddd8e1370",
+      "start_utc": "2026-11-23T21:54:12.176322+00:00",
+      "streams": 8,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 2400,
+      "duration_s": 30.026678562164307,
+      "target_fps": 80,
+      "inference_fps": 79.92892037763265,
+      "per_stream_fps": [
+        9.9914478547708,
+        9.992113377729185,
+        9.991115047204081,
+        9.991115047204081,
+        9.991115047204081,
+        9.991115047204081,
+        9.991115047204081,
+        9.9914478547708
+      ],
+      "dropped_frames": 0,
+      "detections": 1200,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.268714427947998,
+        "p95": 5.798738956451416
+      },
+      "stage_p95_ms": {
+        "decode_ms": 9.883687,
+        "preprocess_ms": 15.183536,
+        "inference_ms": 10.868171,
+        "crop_upload_ms": 76.692647,
+        "manifest_io_ms": 76.55659700000001,
+        "kafka_publish_ms": 15.28383,
+        "lag_ms": 386.508216
+      },
+      "gpu_samples": 28,
+      "mean_gpu_pct": 13.964285714285714,
+      "peak_vram_mib": 3824,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    }
+  ],
+  "production_cuda": [
+    {
+      "run": "bench-00791b8e3aa5",
+      "provider": "cuda",
+      "image_id": "sha256:a0bd73cc44c45acbd7a607a09e3e329737d1c26e3ca4994b3c497738970dea99",
+      "start_utc": "2026-11-23T21:58:29.648255+00:00",
+      "streams": 1,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 300,
+      "duration_s": 31.7907452583313,
+      "target_fps": 10,
+      "inference_fps": 9.436708625802975,
+      "per_stream_fps": [
+        9.436708625802975
+      ],
+      "dropped_frames": 0,
+      "detections": 150,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.465498208999634,
+        "p95": 6.154125213623047
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.721067,
+        "preprocess_ms": 17.14188,
+        "inference_ms": 11.378285,
+        "crop_upload_ms": 68.816153,
+        "manifest_io_ms": 69.4735,
+        "kafka_publish_ms": 12.064687,
+        "lag_ms": 1780.456404
+      },
+      "gpu_samples": 29,
+      "mean_gpu_pct": 1.103448275862069,
+      "peak_vram_mib": 481,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-85d8d1e4cc50",
+      "provider": "cuda",
+      "image_id": "sha256:a0bd73cc44c45acbd7a607a09e3e329737d1c26e3ca4994b3c497738970dea99",
+      "start_utc": "2026-11-23T21:59:21.620060+00:00",
+      "streams": 2,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 600,
+      "duration_s": 29.9649395942688,
+      "target_fps": 20,
+      "inference_fps": 20.02340095204991,
+      "per_stream_fps": [
+        10.011700476024956,
+        10.011700476024956
+      ],
+      "dropped_frames": 0,
+      "detections": 300,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.1737515926361084,
+        "p95": 5.524791479110718
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.946234,
+        "preprocess_ms": 13.562645,
+        "inference_ms": 6.568726,
+        "crop_upload_ms": 68.973428,
+        "manifest_io_ms": 51.166940999999994,
+        "kafka_publish_ms": 7.643724,
+        "lag_ms": 283.236551
+      },
+      "gpu_samples": 28,
+      "mean_gpu_pct": 2.9285714285714284,
+      "peak_vram_mib": 959,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-ccdd763d8413",
+      "provider": "cuda",
+      "image_id": "sha256:a0bd73cc44c45acbd7a607a09e3e329737d1c26e3ca4994b3c497738970dea99",
+      "start_utc": "2026-11-23T22:00:17.596718+00:00",
+      "streams": 4,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 1200,
+      "duration_s": 29.94828224182129,
+      "target_fps": 40,
+      "inference_fps": 40.06907609292728,
+      "per_stream_fps": [
+        10.018272587566887,
+        10.017603575504603,
+        10.01726902323182,
+        10.021619228148491
+      ],
+      "dropped_frames": 0,
+      "detections": 600,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.0937507152557373,
+        "p95": 5.478531122207642
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.384429,
+        "preprocess_ms": 10.615335,
+        "inference_ms": 3.892122,
+        "crop_upload_ms": 38.51279,
+        "manifest_io_ms": 30.138525,
+        "kafka_publish_ms": 4.295526,
+        "lag_ms": 108.622382
+      },
+      "gpu_samples": 29,
+      "mean_gpu_pct": 6.172413793103448,
+      "peak_vram_mib": 1914,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-cde892ca598c",
+      "provider": "cuda",
+      "image_id": "sha256:a0bd73cc44c45acbd7a607a09e3e329737d1c26e3ca4994b3c497738970dea99",
+      "start_utc": "2026-11-23T22:01:10.049851+00:00",
+      "streams": 8,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 9600,
+      "duration_s": 119.96114897727966,
+      "target_fps": 80,
+      "inference_fps": 80.02590907009582,
+      "per_stream_fps": [
+        10.00490665665114,
+        10.0042393688153,
+        10.00490665665114,
+        10.003238633761978,
+        10.0042393688153,
+        10.005824300408833,
+        10.0042393688153,
+        10.00490665665114
+      ],
+      "dropped_frames": 0,
+      "detections": 4800,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.240227460861206,
+        "p95": 5.645217657089233
+      },
+      "stage_p95_ms": {
+        "decode_ms": 10.795805,
+        "preprocess_ms": 11.944275,
+        "inference_ms": 5.730347,
+        "crop_upload_ms": 34.940537,
+        "manifest_io_ms": 38.799132,
+        "kafka_publish_ms": 7.759659,
+        "lag_ms": 205.250747
+      },
+      "gpu_samples": 111,
+      "mean_gpu_pct": 11.783783783783784,
+      "peak_vram_mib": 3824,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    }
+  ],
+  "production_cpu": [
+    {
+      "run": "bench-17272ae08211",
+      "provider": "cpu",
+      "image_id": "sha256:f085ef7cd88a670f8083daf43ff14a6c748d5be3004a3f60ea70e05d1177e65c",
+      "start_utc": "2026-11-23T22:04:28.774703+00:00",
+      "streams": 8,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 9600,
+      "duration_s": 119.98829746246338,
+      "target_fps": 80,
+      "inference_fps": 80.0078024525952,
+      "per_stream_fps": [
+        10.0009753065744,
+        10.002392447033566,
+        10.002475834775861,
+        10.003393032660371,
+        10.001808871142295,
+        10.00189222927881,
+        10.003726599062318,
+        10.00280934001107
+      ],
+      "dropped_frames": 0,
+      "detections": 4800,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.53243350982666,
+        "p95": 6.013430118560791
+      },
+      "stage_p95_ms": {
+        "decode_ms": 8.463931,
+        "preprocess_ms": 24.471283,
+        "inference_ms": 27.929826,
+        "crop_upload_ms": 34.570648,
+        "manifest_io_ms": 36.741286,
+        "kafka_publish_ms": 9.742306,
+        "lag_ms": 1833.622103
+      },
+      "gpu_samples": 111,
+      "mean_gpu_pct": 0,
+      "peak_vram_mib": 0
+    },
+    {
+      "run": "bench-697da19b5465",
+      "provider": "cpu",
+      "image_id": "sha256:f085ef7cd88a670f8083daf43ff14a6c748d5be3004a3f60ea70e05d1177e65c",
+      "start_utc": "2026-11-23T22:06:38.062338+00:00",
+      "streams": 8,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 2400,
+      "duration_s": 29.97866153717041,
+      "target_fps": 80,
+      "inference_fps": 80.05694307013175,
+      "per_stream_fps": [
+        10.012795826652155,
+        10.00811933547659,
+        10.007451678733725,
+        10.007117883766469,
+        10.010457074715868,
+        10.010457074715868,
+        10.012461595420325,
+        10.01513567165318
+      ],
+      "dropped_frames": 0,
+      "detections": 1200,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.1710031032562256,
+        "p95": 5.66800332069397
+      },
+      "stage_p95_ms": {
+        "decode_ms": 8.23988,
+        "preprocess_ms": 13.265103,
+        "inference_ms": 28.943643,
+        "crop_upload_ms": 36.496285,
+        "manifest_io_ms": 36.454101,
+        "kafka_publish_ms": 10.556657,
+        "lag_ms": 251.373403
+      },
+      "gpu_samples": 28,
+      "mean_gpu_pct": 0,
+      "peak_vram_mib": 0
+    }
   ]
 }

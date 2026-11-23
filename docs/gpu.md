@@ -39,3 +39,9 @@ The speed-1 GPU acceptance run on the A100 executed 106 CUDA kernels and zero CP
 COMPOSE_FILE=compose.yaml:compose.gpu.yaml DETECTOR_SERVICE=detector-gpu \
   .venv/bin/python tools/acceptance.py --speed 1
 ```
+
+## Input-buffer reuse
+
+The CUDA job keeps one 640 × 640 RGB raster and one native-order planar BGR tensor per serial worker. The resize, channel order, pixel scale and model weights are shared with the CPU reference. The CPU job defaults to allocating its input per frame. Set `YUNET_REUSE_INPUT=false` on a GPU job to reproduce the original allocation path or `YUNET_REUSE_INPUT=true` on a CPU job to test buffer reuse. Each worker logs the effective setting.
+
+The tuned CUDA image passed the speed-1 trace again with 106 CUDA kernels, zero CPU kernels and a pixel-exact crop for detection `a9ead396-f855-43d8-b774-1094ed37a4cc`. The CPU reference also passed with reuse disabled for detection `dd0a5e15-ca1d-499b-bbb2-afc1f18b9d2d`. Both replays left one logical SQL row. The sustained capacity comparison uses all frames and is available in the [benchmark results](benchmark.md).
