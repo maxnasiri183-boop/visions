@@ -1,0 +1,10 @@
+plugins { id 'application' }
+dependencies {
+    implementation project(':contracts')
+    implementation project(':vision-onnx')
+    implementation 'org.apache.kafka:kafka-clients:3.9.1'
+    implementation platform('software.amazon.awssdk:bom:2.31.78')
+    implementation 'software.amazon.awssdk:s3'
+    runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
+}
+application { mainClass = 'visions.DetectionWorker' }
