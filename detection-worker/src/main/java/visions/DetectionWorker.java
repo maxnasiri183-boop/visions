@@ -26,13 +26,16 @@ public final class DetectionWorker {
   private static final ObjectMapper JSON = new ObjectMapper();
 
   public static void main(String[] args) throws Exception {
-    if (args.length != 4)
-      throw new IllegalArgumentException("Usage: CLIP SOURCE_ID FRAME_INDEX SPEED");
+    boolean sustained = args.length == 5 && args[2].equals("all");
+    if (!sustained && args.length != 4)
+      throw new IllegalArgumentException("Usage: CLIP SOURCE_ID FRAME_INDEX SPEED or CLIP SOURCE_ID all SPEED LOOPS");
     Path clip = Path.of(args[0]);
     String source = args[1];
     if (!source.matches("[A-Za-z0-9_-]{1,128}"))
       throw new IllegalArgumentException("Invalid source_id");
-    int selected = Integer.parseInt(args[2]);
+    int selected = sustained ? -1 : Integer.parseInt(args[2]);
+    int loops = sustained ? Integer.parseInt(args[4]) : 1;
+    if ((!sustained && selected < 0) || loops < 1) throw new IllegalArgumentException("Invalid frame range");
     double speed = Double.parseDouble(args[3]);
     String model = System.getenv("MODEL_PATH");
     if (!MODEL_HASH.equals(hash(Path.of(model)))) throw new IOException("Wrong YuNet model digest");
@@ -53,46 +56,70 @@ public final class DetectionWorker {
                 .endpointOverride(URI.create(System.getenv("S3_ENDPOINT")))
                 .build();
         var kafka = new KafkaProducer<String, String>(props)) {
-      String manifest =
-          "frames/" + source + "/" + asset + "/" + VERSION + "/v0/" + selected + ".json";
-      feed.play(
-          speed,
-          selected,
-          (image, pts, ingested) -> {
-            byte[] saved;
-            try {
-              saved = read(s3, manifest);
-            } catch (S3Exception e) {
-              if (e.statusCode() != 404) throw e;
-              var events =
-                  makeEvents(s3, detector, image, source, asset, selected, pts, ingested, feed);
-              byte[] proposal = JSON.writeValueAsBytes(events);
-              try {
-                s3.putObject(
-                    PutObjectRequest.builder()
-                        .bucket(BUCKET)
-                        .key(manifest)
-                        .contentType("application/json")
-                        .ifNoneMatch("*")
-                        .build(),
-                    RequestBody.fromBytes(proposal));
-                saved = proposal;
-              } catch (S3Exception conflict) {
-                if (conflict.statusCode() != 412 && conflict.statusCode() != 409) throw conflict;
-                saved = read(s3, manifest);
-              }
-            }
-            for (var event : JSON.readTree(saved)) {
-              String id = event.required("detection_id").asText();
-              var ack =
-                  kafka.send(new ProducerRecord<>(TOPIC, id, JSON.writeValueAsString(event))).get();
-              System.out.printf(
-                  "detection_id=%s topic=%s partition=%d offset=%d%n",
-                  id, ack.topic(), ack.partition(), ack.offset());
-            }
-            System.out.println("manifest=s3://" + BUCKET + "/" + manifest);
-          });
+      if (sustained) {
+        feed.play(speed, -1, 1, frame ->
+            process(s3, kafka, detector, feed, frame, source + "-warmup", asset, true));
+        System.out.println("warmup_complete");
+        String barrier = System.getenv("BENCH_START_FILE");
+        if (barrier != null) {
+          long deadline = System.nanoTime() + 180_000_000_000L;
+          while (!Files.exists(Path.of(barrier))) {
+            if (System.nanoTime() > deadline) throw new IOException("Benchmark peers failed to warm up");
+            Thread.sleep(20);
+          }
+        }
+      }
+      feed.play(speed, selected, loops, frame ->
+          process(s3, kafka, detector, feed, frame, source, asset, false));
     }
+  }
+
+  private static void process(S3Client s3, KafkaProducer<String, String> kafka, YuNet detector,
+      FileFeed feed, FileFeed.Frame frame, String source, String asset, boolean warmup) throws Exception {
+    String manifest = "frames/" + source + "/" + asset + "/" + VERSION + "/v0/" + frame.index() + ".json";
+    var stats = new LinkedHashMap<String, Object>();
+    stats.put("source", source);
+    stats.put("index", frame.index());
+    stats.put("warmup", warmup);
+    stats.put("ingested_at", frame.ingested().toString());
+    stats.put("media_pts_s", (double) frame.pts() * feed.timeBase.get(0) / feed.timeBase.get(1));
+    stats.put("decode_ms", frame.decodeMs());
+    stats.put("lag_ms", frame.lagMs());
+    stats.put("ran_inference", false);
+    double manifestMs = 0;
+    long manifestStart = System.nanoTime();
+    byte[] saved;
+    try {
+      saved = read(s3, manifest);
+    } catch (S3Exception e) {
+      if (e.statusCode() != 404) throw e;
+      manifestMs = (System.nanoTime() - manifestStart) / 1e6;
+      var events = makeEvents(s3, detector, frame.image(), source, asset, frame.index(), frame.pts(),
+          frame.ingested(), feed, stats);
+      byte[] proposal = JSON.writeValueAsBytes(events);
+      manifestStart = System.nanoTime();
+      try {
+        s3.putObject(PutObjectRequest.builder().bucket(BUCKET).key(manifest)
+            .contentType("application/json").ifNoneMatch("*").build(), RequestBody.fromBytes(proposal));
+        saved = proposal;
+      } catch (S3Exception conflict) {
+        if (conflict.statusCode() != 412 && conflict.statusCode() != 409) throw conflict;
+        saved = read(s3, manifest);
+      }
+    }
+    stats.put("manifest_io_ms", manifestMs + (System.nanoTime() - manifestStart) / 1e6);
+    var events = JSON.readTree(saved);
+    long start = System.nanoTime();
+    for (var event : events) {
+      String id = event.required("detection_id").asText();
+      var ack = kafka.send(new ProducerRecord<>(TOPIC, id, JSON.writeValueAsString(event))).get();
+      System.out.printf("detection_id=%s topic=%s partition=%d offset=%d%n", id, ack.topic(), ack.partition(), ack.offset());
+    }
+    stats.put("kafka_publish_ms", events.isEmpty() ? 0 : (System.nanoTime() - start) / 1e6);
+    stats.put("detections", events.size());
+    stats.put("wall_time", Instant.now().toEpochMilli() / 1000.0);
+    System.out.println("manifest=s3://" + BUCKET + "/" + manifest);
+    System.out.println("frame_stats=" + JSON.writeValueAsString(stats));
   }
 
   private static byte[] read(S3Client s3, String key) {
@@ -108,19 +135,26 @@ public final class DetectionWorker {
       int index,
       long pts,
       Instant ingested,
-      FileFeed feed)
+      FileFeed feed, Map<String, Object> stats)
       throws Exception {
     var events = new ArrayList<Detection>();
-    for (var face : detector.detect(image)) {
+    var faces = detector.detect(image);
+    stats.put("ran_inference", true);
+    stats.put("preprocess_ms", detector.preprocessMs());
+    stats.put("inference_ms", detector.inferenceMs());
+    double uploadMs = 0;
+    for (var face : faces) {
       var box = face.box();
       String id = UUID.randomUUID().toString();
       String key = "crops/" + id + ".png";
       var buffer = new ByteArrayOutputStream();
       ImageIO.write(image.getSubimage(box.x, box.y, box.width, box.height), "png", buffer);
       byte[] png = buffer.toByteArray();
+      long start = System.nanoTime();
       s3.putObject(
           r -> r.bucket(BUCKET).key(key).contentType("image/png").ifNoneMatch("*"),
           RequestBody.fromBytes(png));
+      uploadMs += (System.nanoTime() - start) / 1e6;
       events.add(
           new Detection(
               1,
@@ -140,6 +174,7 @@ public final class DetectionWorker {
               "s3://" + BUCKET + "/" + key,
               HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(png))));
     }
+    stats.put("crop_upload_ms", uploadMs);
     return events;
   }
 
