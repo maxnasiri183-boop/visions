@@ -253,7 +253,20 @@ async def desktop_case(page, base, root, out, known, unknown, empty, poor, repor
     await capture(page, out, "other-appearances-track")
     ids = await hits.evaluate_all("buttons=>buttons.map(b=>b.dataset.detectionId)")
     with database(root) as db:
-        options = [observation(db, key) for key in ids if key != known["detection_id"]]
+        # Rolling retention may expire a lower-ranked airing after search. Select a currently retained result.
+        placeholders = ",".join("?" for _ in ids)
+        retained = {
+            r[0]
+            for r in db.execute(
+                f"SELECT detection_id FROM observations WHERE detection_id IN ({placeholders})",
+                ids,
+            )
+        }
+        options = [
+            observation(db, key)
+            for key in ids
+            if key in retained and key != known["detection_id"]
+        ]
     assert options, "No retained appearance distinct from the selected observation"
     hit = max(
         options,
@@ -283,11 +296,21 @@ async def desktop_case(page, base, root, out, known, unknown, empty, poor, repor
     # A normal archive click reuses the app instance; stale-face bugs can disappear on a page reload.
     archive = page.locator(".record-archive")
     await archive.locator("summary").click()
-    await (
+    empty_row = (
         archive.locator(".record-row")
         .filter(has=page.get_by_text("empty", exact=True))
-        .first.click()
+        .first
     )
+    if await empty_row.count():
+        await empty_row.click()
+    else:
+        # The small archive page moves while the larger playlist is playing.
+        # Navigate to the pinned empty clip through the running SPA router without reloading React.
+        await page.evaluate(
+            """url => { history.pushState({visions:true},'',url);
+            window.dispatchEvent(new PopStateEvent('popstate')); }""",
+            address(base, empty, False),
+        )
     await expect(page.get_by_text(re.compile("چهره‌ای|بدون چهره")).first).to_be_visible()
     await expect(page.locator(".inspector .pair img")).to_have_count(0)
     assert "face" not in parse_qs(urlparse(page.url).query)
@@ -560,13 +583,17 @@ async def photo_case(page, base, root, out, known):
 async def engineering(page, ops_url, grafana_url, out):
     for name, url, heading in (
         ("operations", ops_url, "Pipeline operations"),
-        ("grafana", grafana_url, "Source online and telemetry freshness"),
+        ("grafana", grafana_url, "Frames per second"),
     ):
         response = await page.goto(url)
         assert response and response.ok, url
         await expect(page.get_by_text(heading, exact=True).first).to_be_visible(
             timeout=25000
         )
+        if name == "grafana":
+            await expect(
+                page.get_by_text("Face observations per second", exact=True).first
+            ).to_be_visible()
         await expect(page.locator("html")).to_have_attribute("lang", re.compile("^en"))
         assert await page.evaluate("getComputedStyle(document.body).direction") == "ltr"
         await capture(page, out, name + "-english")

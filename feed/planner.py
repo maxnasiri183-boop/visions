@@ -219,10 +219,18 @@ def run():
                     if last
                     else now
                 )
+                setting = db.execute(
+                    "SELECT speed,changed_at FROM replay_controls WHERE source_id=?",
+                    (camera,),
+                ).fetchone()
+                if setting and last and last["scheduled_at"] < setting["changed_at"]:
+                    # Finish queued work at the original rate. Start the new rate on its own wall clock.
+                    if pending:
+                        continue
+                    due = max(now, due)
                 if due > now:
                     continue
                 entry, clip = choices[seq % len(choices)]
-                setting = db.execute("SELECT speed FROM replay_controls WHERE source_id=?", (camera,)).fetchone()
                 selected_speed = setting[0] if setting else speed
                 oid = "occ-" + uuid.uuid4().hex
                 db.execute(
