@@ -24,3 +24,12 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+  recognition:
+    <<: *operator
+    command: ["python","-m","identity.worker"]
+    healthcheck:
+      test: ["CMD","python","-c","import os,time; assert time.time()-os.stat('/tmp/visions-recognition.ready').st_mtime < 20"]
+      interval: 10s
+      timeout: 3s
+      retries: 4
+      start_period: 20s

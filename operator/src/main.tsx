@@ -2,15 +2,18 @@ import { GalleryPage } from "./Gallery";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Route, View } from "./types";
+import { VideoPage } from "./Video";
 import "./style.css";
 const labels: Partial<Record<View, string>> = {
+  live: "پخش زنده",
+  recordings: "ویدیوها",
   gallery: "گالری مرجع",
 };
 function read(): Route {
   const q = new URLSearchParams(location.search),
     view = q.get("view") as View;
   return {
-    view: Object.hasOwn(labels, view) ? view : "gallery",
+    view: Object.hasOwn(labels, view) ? view : "live",
     occ: q.get("occ") || undefined,
     frame: q.has("frame") ? Number(q.get("frame")) : undefined,
     face: q.get("face") || undefined,
@@ -61,7 +64,11 @@ function App() {
         </nav>
       </header>
       <main>
-        <GalleryPage route={route} go={go} />
+        {route.view === "gallery" ? (
+          <GalleryPage route={route} go={go} />
+        ) : (
+          <VideoPage route={route} go={go} />
+        )}
       </main>
     </>
   );

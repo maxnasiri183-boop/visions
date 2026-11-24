@@ -80,3 +80,52 @@ def reference_face(ref):
     return image_response(c.reference_face(ref))
 
 
+@bp.get("/observations/<identifier>")
+def observation(identifier):
+    with c.connect() as db:
+        row = db.execute(
+            """SELECT d.*,r.person_id,r.display_name,COALESCE(f.model,v.model) model,
+            COALESCE(f.preprocessing,v.preprocessing) preprocessing,COALESCE(f.quality_policy,v.policy) quality_policy
+            FROM decisions d LEFT JOIN refs r USING(reference_id) LEFT JOIN observation_features f USING(detection_id)
+            LEFT JOIN versions v ON v.version=d.version
+                             WHERE d.detection_id=?""",
+            (identifier,),
+        ).fetchone()
+    if not row:
+        return jsonify(
+            state="pending",
+            detection_id=identifier,
+            reason="Awaiting recognition worker",
+        )
+    data = dict(row)
+    if data["state"] != "matched":
+        data.update(
+            candidate_person_id=data["person_id"],
+            candidate_display_name=data["display_name"],
+            person_id=None,
+            display_name=None,
+        )
+    data["portrait_url"] = (
+        "/api/identity/references/" + data["reference_id"] + "/portrait"
+        if data["reference_id"]
+        else None
+    )
+    data["face_url"] = (
+        "/api/identity/references/" + data["reference_id"] + "/face"
+        if data["reference_id"]
+        else None
+    )
+    return jsonify(data)
+
+
+@bp.get("/observations/<identifier>/thumbnail")
+def thumbnail(identifier):
+    with c.connect() as db:
+        row = db.execute(
+            "SELECT crop_path FROM indexed WHERE detection_id=?", (identifier,)
+        ).fetchone()
+    if not row:
+        abort(404)
+    return image_response(row[0])
+
+
