@@ -237,6 +237,45 @@ def details(identity):
     )
 
 
+def examples():
+    manifest = DATA / "research/upload.json"
+    rows = json.loads(manifest.read_text()) if manifest.is_file() else []
+    if (DATA / "research/examples/multi-probe.jpg").is_file():
+        rows.append(
+            dict(path="research/examples/multi-probe.jpg", gallery_label="composed")
+        )
+    return rows
+
+
+@app.get("/api/operator/examples")
+def example_index():
+    return jsonify(
+        [
+            {
+                "label": "نمونهٔ "
+                + str(i + 1)
+                + " · "
+                + {
+                    "enrolled": "عضو گالری",
+                    "present": "خارج از گالری",
+                    "absent": "بدون سابقه",
+                    "composed": "دو چهره · تصویر ترکیبی",
+                }.get(row.get("gallery_label"), "عکس آزمایشی"),
+                "url": f"/api/operator/examples/{i}",
+            }
+            for i, row in enumerate(examples())
+        ]
+    )
+
+
+@app.get("/api/operator/examples/<int:index>")
+def example_image(index):
+    rows = examples()
+    if index >= len(rows):
+        abort(404)
+    return media_file(rows[index]["path"], "image/jpeg")
+
+
 @app.get("/")
 def index():
     return send_from_directory(DIST, "index.html")
