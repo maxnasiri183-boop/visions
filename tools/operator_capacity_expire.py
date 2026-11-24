@@ -50,13 +50,12 @@ def expire(trial, compose, env_file, yunet):
         if not backup.exists():
             with closing(sqlite3.connect(backup)) as dest:
                 db.backup(dest)
-        # Only this harness's interrupted private work can be retired here.
-        # The deployed expiry path checks every observed Kafka offset before deleting.
-        with db:
+        incomplete = (
             db.execute(
-                "UPDATE occurrences SET state='complete',finished_at=0 WHERE state NOT IN ('expired','expiring','complete')"
-            )
-
+                "SELECT 1 FROM occurrences WHERE state NOT IN ('expired','expiring','complete') LIMIT 1"
+            ).fetchone()
+            is not None
+        )
     args = [*docker]
     if args[0] == "sudo":
         args = [
@@ -68,6 +67,10 @@ def expire(trial, compose, env_file, yunet):
     args.extend(
         ["compose", "-p", project, "-f", str(compose), "--env-file", str(env_file)]
     )
+    for name in ("compose.capacity.yaml", "compose.capacity.json"):
+        if (trial / name).is_file():
+            args.extend(["-f", str(trial / name)])
+            break
     env = dict(
         os.environ,
         FEED_RUN_ID=project,
@@ -87,9 +90,15 @@ def expire(trial, compose, env_file, yunet):
             "python3.12",
             "-e",
             "FEED_RETENTION_SECONDS=0",
+            "-e",
+            "FEED_WORKERS=1",
             "operator-worker",
             "-c",
-            "from db import initialize; from backend import expire; initialize(); expire()",
+            # Recover durable manifests and republish any uncheckpointed frames before the
+            # regular retirement loop runs. The project's planner remains stopped.
+            "from worker import run; run()"
+            if incomplete
+            else "from db import initialize; from backend import expire; initialize(); expire()",
         ],
         env=env,
         check=True,
