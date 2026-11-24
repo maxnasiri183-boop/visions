@@ -4,6 +4,8 @@ FROM ${REVIEW_IMAGE} AS python
 COPY feed/*.py /feed/
 COPY deploy/detections.sql /feed/
 WORKDIR /feed
+ARG VISIONS_REVISION=unrecorded
+LABEL org.opencontainers.image.revision=$VISIONS_REVISION
 ENTRYPOINT ["python"]
 CMD ["planner.py"]
 
@@ -13,6 +15,8 @@ COPY --from=python /usr/local/lib /usr/local/lib
 COPY --from=python /feed /feed
 RUN ldconfig && python3.12 -c 'import boto3,kafka,pymysql,sqlite3'
 WORKDIR /feed
+ARG VISIONS_REVISION=unrecorded
+LABEL org.opencontainers.image.revision=$VISIONS_REVISION
 ENV PYTHONUNBUFFERED=1
 ENTRYPOINT ["python3.12","worker.py"]
 CMD []
