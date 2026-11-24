@@ -240,6 +240,24 @@ def details(identity):
     )
 
 
+@app.get("/api/operator/soak")
+def soak_report():
+    with closing(feed()) as db:
+        run = db.execute(
+            "SELECT run_id FROM runs ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+    if not run:
+        return jsonify(outcome="unavailable")
+    directory = (DATA / "soaks" / run["run_id"]).resolve()
+    if not directory.is_relative_to(DATA / "soaks"):
+        abort(404)
+    for name in ("report.json", "status.json"):
+        path = directory / name
+        if path.is_file():
+            return send_file(path, mimetype="application/json", conditional=False)
+    return jsonify(outcome="unavailable")
+
+
 @app.get("/api/operator/routine-load")
 def routine_load():
     # English engineering drill-down for Grafana. Only return Routine Load diagnostics.

@@ -89,7 +89,7 @@ def expire(trial, compose, env_file, yunet):
             "FEED_RETENTION_SECONDS=0",
             "operator-worker",
             "-c",
-            "from backend import expire; expire()",
+            "from db import initialize; from backend import expire; initialize(); expire()",
         ],
         env=env,
         check=True,

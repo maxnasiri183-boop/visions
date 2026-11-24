@@ -1170,6 +1170,110 @@
         }
       },
       "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 26,
+      "title": "Soak monitor and reserve alarms",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 96,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_soak_open_alerts",
+          "legendFormat": "open soak alerts",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_disk_below_reserve",
+          "legendFormat": "disk below reserve",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Durable observations from the current soak run."
+    },
+    {
+      "type": "timeseries",
+      "id": 27,
+      "title": "Soak observation window",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 96,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_soak_elapsed_seconds",
+          "legendFormat": "elapsed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "time()-visions_operator_soak_sample_at",
+          "legendFormat": "latest sample age",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Durable observations from the current soak run."
     }
   ],
   "links": [
@@ -1183,6 +1287,12 @@
       "type": "link",
       "title": "Open operator source health",
       "url": "http://127.0.0.1:8092/?view=health",
+      "targetBlank": true
+    },
+    {
+      "type": "link",
+      "title": "Open current soak report",
+      "url": "http://127.0.0.1:8092/api/operator/soak",
       "targetBlank": true
     }
   ]

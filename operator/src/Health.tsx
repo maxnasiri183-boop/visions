@@ -48,6 +48,15 @@ const states: Record<string, string> = {
 export function Health({ go }: { go: Link }) {
   const data = useData<Summary>("/api/operator/health", 2000),
     s = data.value;
+  const soak = useData<{
+    outcome: string;
+    samples: number;
+    sample_at: number;
+    elapsed_seconds: number;
+    stop_at: number;
+    alerts: { end: number | null }[];
+    totals: { frames: number };
+  }>("/api/operator/soak", 10000).value;
   return (
     <>
       <div className="page-head">
@@ -210,6 +219,30 @@ export function Health({ go }: { go: Link }) {
               </p>
             ))}
           </section>
+          {soak && soak.outcome !== "unavailable" && (
+            <section className="card inside">
+              <h2>آزمون پایداری ۲۴ ساعته</h2>
+              <p>
+                {soak.outcome === "pass"
+                  ? "قبول"
+                  : soak.outcome === "failed"
+                    ? "ناموفق"
+                    : Date.now() / 1000 - soak.sample_at > 40
+                      ? "دادهٔ آزمون قدیمی است"
+                      : "در حال اجرا"}{" "}
+                · {fa(soak.elapsed_seconds / 3600, 2)} ساعت ·{" "}
+                {fa(soak.totals.frames)} فریم پردازش‌شده
+              </p>
+              <p>
+                آخرین نمونه {date(soak.sample_at)} · پایان بازه{" "}
+                {date(soak.stop_at)} · هشدارهای باز{" "}
+                {fa(soak.alerts.filter((a) => a.end === null).length)}
+              </p>
+              <a href="/api/operator/soak" target="_blank" rel="noreferrer">
+                گزارش فنی آزمون ←
+              </a>
+            </section>
+          )}
           <p className="strip">
             فضای آزاد {fa(s.free_bytes / 1024 ** 3, 1)} گیبی‌بایت ·{" "}
             {fa(s.expired)} پخش منقضی‌شده
