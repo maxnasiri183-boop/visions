@@ -8,3 +8,5 @@ dependencies {
     runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
 }
 application { mainClass = 'visions.DetectionWorker' }
+
+dependencies { testImplementation 'junit:junit:4.13.2' }
