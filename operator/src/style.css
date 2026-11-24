@@ -677,6 +677,11 @@ dialog {
   height: 44px;
   margin-top: 8px;
 }
+.record-link-slot {
+  min-height: 44px;
+  display: grid;
+  place-content: center;
+}
 .text-action {
   margin: 8px auto 0;
   display: flex;

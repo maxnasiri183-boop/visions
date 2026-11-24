@@ -183,6 +183,7 @@ export function Evidence({
       </div>
       <div
         className={"decision decision-" + state}
+        key={state}
         data-decision={state}
         aria-live="polite"
       >
@@ -239,21 +240,23 @@ export function Evidence({
         <Images />
         مشاهده‌های دیگر
       </button>
-      {known && (
-        <button
-          className="text-action"
-          onClick={() =>
-            go({
-              view: "gallery",
-              person: result.person_id,
-              version: String(result.version),
-            })
-          }
-        >
-          <UsersRound />
-          پروندهٔ مرجع <ArrowLeft />
-        </button>
-      )}
+      <div className="record-link-slot">
+        {known && (
+          <button
+            className="text-action"
+            onClick={() =>
+              go({
+                view: "gallery",
+                person: result.person_id,
+                version: String(result.version),
+              })
+            }
+          >
+            <UsersRound />
+            پروندهٔ مرجع <ArrowLeft />
+          </button>
+        )}
+      </div>
       <details
         className="technical"
         onToggle={(e) => setTechnical(e.currentTarget.open)}

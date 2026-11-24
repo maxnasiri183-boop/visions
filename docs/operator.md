@@ -69,3 +69,30 @@ Under active load the new Grafana source-health series changed from 1 to 0 and b
 One CUDA source met real-time input rate on the fixed throughput corpus. No tested level met every provisional latency gate. At eight sources, the feed processed 75.83 FPS and the complete pipeline drained at 20.87 FPS. P95 time to searchable results reached 95.98 s with 2,427 observations waiting for CPU recognition. The one-stream comparison measured YuNet inference p95 of 3.24 ms on the A100 and 16.62 ms on CPU. [Full-product CPU and GPU measurements](operator-capacity.md)
 
 The [soak report](http://127.0.0.1:8092/api/operator/soak) serves the latest durable status and automatically switches to the final report after the observation window drains. The same run is visible on the Persian source-health page. On this host the measured window began at 2026-11-24 02:46:14 UTC and ends at 2026-11-25 02:46:14 UTC. Its artifacts are under `/home/ubuntu/visions/private/operator/soaks/operator-soak-20261124-a100/`.
+
+## Video workspace interface
+
+The React and TypeScript operator shell is Persian and RTL. The persistent header opens recordings, live sources, image search, and the gallery. Its search dialog (Ctrl/Cmd+K) searches gallery records and recently retained recordings, or opens an exact detection ID. Notifications read the source-health event log. The access menu links the English Operations and Grafana pages. The deployment grants private access through SSH and exposes a separate gallery-management key. The backend supplies no signed-in person profile or individual notification inbox.
+
+The desktop workspace devotes approximately 72% of the available width to the player. The evidence inspector stays beside it. The mobile inspector is a native dialog sheet with focus containment, Escape dismissal and return of focus to the selected box. Changing viewport width keeps the same player. Operator-facing text inherits `lang="fa" dir="rtl"`. Apply LTR isolation to media time, detection IDs, similarity scores and technical payloads. The video, overlays, filmstrip, ruler and progress bars always use physical LTR coordinates. A resize observer fits the overlay to the visible media rectangle, including letterboxing. Local Vazirmatn and its SIL license are in `operator/public/font/`.
+
+Use the centralized `--bg-*`, `--border-*`, `--text-*`, `--accent*`, `--success`, `--warning`, `--error` and spacing tokens in `operator/src/style.css`. Primary controls, selection, active navigation and the playhead share the violet accent. The motion curve is `cubic-bezier(0.22, 1, 0.36, 1)`. Hover, button feedback, box selection, changing evidence, inspector reveal and historical navigation use 120, 150, 180, 200, 220 and 240 ms respectively. Keep footage and its coordinate system stationary and honor reduced motion. The approved visual reference is the written operator UI specification in the implementation request. It calls for a video-first composition, side-by-side face evidence and a compact event timeline. Verify these in the running workspace at 1440 px and on mobile.
+
+Comparison retrieves the immutable decision for the selected observation and gallery version. A below-threshold result shows the observed crop, cosine similarity, and a neutral reference placeholder. The continuous API has no on-demand inference or manual replay endpoint. Technical disclosure includes the persisted Kafka offsets, SQL payload and original frame. For another appearance the app submits the observation's detection ID to the existing historical-search endpoint, opens its actual video/frame/face, and encodes the previous selection in the URL. The filmstrip samples the retained playable media; markers reflect observed events in the loaded frame window.
+
+Use the existing deployment script to rebuild and roll out the UI alone.
+
+```sh
+cd /home/ubuntu/visions
+tools/start_operator.sh --ui-only
+```
+
+Run the browser checks on the actual operator endpoint. The recording captures real private media and is stored with the screenshots under `private/operator/screens/video-workspace/`.
+
+```sh
+export CHROME_BIN=/tmp/visions-chrome/opt/google/chrome/chrome
+.venv/bin/python tools/check_operator_browser.py
+.venv/bin/python tools/check_video_workspace.py --record
+```
+
+On the pilot, Chromium exercised 1920, 1440, 1280, 820 and 390 px viewports, fullscreen, keyboard operation and reduced motion. The 1440 px player and inspector measured 989 and 385 CSS pixels. The largest measured overlay error across the five sizes was 0.33 CSS pixels. The test also injected a delayed comparison response and an HTTP 503 inside its own browser tab. A current selection survived an actual live-source advance. Global gallery search, source notifications and the engineering links used the running services.
