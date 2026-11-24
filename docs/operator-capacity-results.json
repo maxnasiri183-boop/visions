@@ -29,6 +29,20 @@
       "frames_per_stream": [
         356
       ],
+      "per_stream": [
+        {
+          "source": "qa-0",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3494,
+          "inference_fps": 11.3494,
+          "detections_per_s": 12.4653,
+          "complete_fps": 11.3494
+        }
+      ],
       "target_fps": 11.1809,
       "feed_rate_fps": 11.3494,
       "full_rate_fps": 11.3494,
@@ -260,6 +274,32 @@
       "frames_per_stream": [
         356,
         356
+      ],
+      "per_stream": [
+        {
+          "source": "qa-0",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3446,
+          "inference_fps": 11.3446,
+          "detections_per_s": 12.4599,
+          "complete_fps": 10.2178
+        },
+        {
+          "source": "qa-1",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3488,
+          "inference_fps": 11.3488,
+          "detections_per_s": 12.4646,
+          "complete_fps": 10.2042
+        }
       ],
       "target_fps": 22.3618,
       "feed_rate_fps": 22.6891,
@@ -498,6 +538,56 @@
         356,
         356,
         356
+      ],
+      "per_stream": [
+        {
+          "source": "qa-0",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3465,
+          "inference_fps": 11.3465,
+          "detections_per_s": 12.4621,
+          "complete_fps": 5.1402
+        },
+        {
+          "source": "qa-1",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3278,
+          "inference_fps": 11.3278,
+          "detections_per_s": 12.4414,
+          "complete_fps": 5.1378
+        },
+        {
+          "source": "qa-2",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3457,
+          "inference_fps": 11.3457,
+          "detections_per_s": 12.4611,
+          "complete_fps": 5.139
+        },
+        {
+          "source": "qa-3",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3397,
+          "inference_fps": 11.3397,
+          "detections_per_s": 12.4545,
+          "complete_fps": 5.1368
+        }
       ],
       "target_fps": 44.7236,
       "feed_rate_fps": 45.311,
@@ -755,6 +845,104 @@
         356,
         356,
         356
+      ],
+      "per_stream": [
+        {
+          "source": "qa-0",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.706,
+          "inference_fps": 9.706,
+          "detections_per_s": 10.6603,
+          "complete_fps": 2.6372
+        },
+        {
+          "source": "qa-1",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.7272,
+          "inference_fps": 9.7272,
+          "detections_per_s": 10.6835,
+          "complete_fps": 2.6345
+        },
+        {
+          "source": "qa-2",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.4916,
+          "inference_fps": 9.4916,
+          "detections_per_s": 10.4248,
+          "complete_fps": 2.6095
+        },
+        {
+          "source": "qa-3",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.7203,
+          "inference_fps": 9.7203,
+          "detections_per_s": 10.6759,
+          "complete_fps": 2.6332
+        },
+        {
+          "source": "qa-4",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.479,
+          "inference_fps": 9.479,
+          "detections_per_s": 10.4109,
+          "complete_fps": 2.6087
+        },
+        {
+          "source": "qa-5",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.5258,
+          "inference_fps": 9.5258,
+          "detections_per_s": 10.4623,
+          "complete_fps": 2.6103
+        },
+        {
+          "source": "qa-6",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.5625,
+          "inference_fps": 9.5625,
+          "detections_per_s": 10.5027,
+          "complete_fps": 2.6116
+        },
+        {
+          "source": "qa-7",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 354,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 9.7836,
+          "inference_fps": 9.7836,
+          "detections_per_s": 10.7455,
+          "complete_fps": 2.6392
+        }
       ],
       "target_fps": 89.4472,
       "feed_rate_fps": 75.8317,
@@ -1035,6 +1223,20 @@
       "frames_per_stream": [
         356
       ],
+      "per_stream": [
+        {
+          "source": "qa-0",
+          "frames": 356,
+          "fresh_inferences": 356,
+          "observations": 391,
+          "searchable": 355,
+          "offered_media_fps": 11.1809,
+          "decoded_fps": 11.3447,
+          "inference_fps": 11.3447,
+          "detections_per_s": 12.4601,
+          "complete_fps": 11.3447
+        }
+      ],
       "target_fps": 11.1809,
       "feed_rate_fps": 11.3447,
       "full_rate_fps": 11.3447,
@@ -1263,6 +1465,32 @@
     "frames_per_stream": [
       356,
       356
+    ],
+    "per_stream": [
+      {
+        "source": "qa-0",
+        "frames": 356,
+        "fresh_inferences": 356,
+        "observations": 391,
+        "searchable": 354,
+        "offered_media_fps": 11.1809,
+        "decoded_fps": 11.3411,
+        "inference_fps": 11.3411,
+        "detections_per_s": 12.4561,
+        "complete_fps": 6.0298
+      },
+      {
+        "source": "qa-1",
+        "frames": 356,
+        "fresh_inferences": 356,
+        "observations": 391,
+        "searchable": 354,
+        "offered_media_fps": 11.1809,
+        "decoded_fps": 11.3481,
+        "inference_fps": 11.3481,
+        "detections_per_s": 12.4638,
+        "complete_fps": 6.0295
+      }
     ],
     "target_fps": 22.3618,
     "feed_rate_fps": 22.6822,

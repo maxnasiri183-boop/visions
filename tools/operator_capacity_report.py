@@ -22,7 +22,10 @@ def distribution(values):
 
 
 def summarize(root, n, catalog, labels, samples, searches, cycles):
-    with closing(sqlite3.connect(root / "feed.sqlite")) as db:
+    backup = root / "evidence-feed.sqlite"
+    with closing(
+        sqlite3.connect(backup if backup.exists() else root / "feed.sqlite")
+    ) as db:
         db.row_factory = sqlite3.Row
         db.execute("ATTACH ? AS ident", (str(root / "identity.sqlite"),))
         jobs = db.execute(
@@ -105,12 +108,14 @@ def summarize(root, n, catalog, labels, samples, searches, cycles):
             oid, idx, ms = json.loads(line)
             if (oid, idx) in contexts:
                 stage["recognition_decode_ms"].append(ms)
+    source_observations = defaultdict(list)
     ready = 0
     by_detection = {}
     for row in rows:
         event = json.loads(row["event_json"])
         sql = json.loads(row["sql_row"])
         f, people = contexts[row["occurrence_id"], row["frame_index"]]
+        source_observations[f["source_id"]].append(row)
         assert (
             row["topic"] == "face.operator.v1"
             and row["latest_offset"] == row["kafka_offset"]
@@ -180,6 +185,36 @@ def summarize(root, n, catalog, labels, samples, searches, cycles):
             cpu.append(100 * (1 - (b["cpu_idle"] - a["cpu_idle"]) / delta))
     dist = {k: distribution(v) for k, v in stage.items()}
     state = Counter(r["decision"] for r in rows)
+    stream_rates = []
+    for source in sorted(by_source):
+        source_jobs = [j for j in jobs if j["source_id"] == source]
+        first = min(j["scheduled_at"] for j in source_jobs)
+        nominal = sum(j["duration_s"] for j in source_jobs)
+        last_frame = max(f["indexed_at"] for f in frames if f["source_id"] == source)
+        observed = source_observations[source]
+        last_result = max(
+            [last_frame]
+            + [
+                max(r["sql_visible_at"], r["search_visible_at"] or r["identity_at"])
+                for r in observed
+            ]
+        )
+        committed = by_source[source]
+        rate = committed / (last_frame - first)
+        stream_rates.append(
+            dict(
+                source=source,
+                frames=committed,
+                fresh_inferences=committed,
+                observations=len(observed),
+                searchable=sum(r["index_state"] == "ready" for r in observed),
+                offered_media_fps=committed / nominal,
+                decoded_fps=rate,
+                inference_fps=rate,
+                detections_per_s=len(observed) / (last_frame - first),
+                complete_fps=committed / (last_result - first),
+            )
+        )
     pace = len(frames) / decode_seconds
     target = len(frames) / media
     gates = dict(
@@ -203,6 +238,7 @@ def summarize(root, n, catalog, labels, samples, searches, cycles):
         warmup_frames=warm["frames"],
         warmup_detections=warm["detections"],
         frames_per_stream=[by_source[s] for s in sorted(by_source)],
+        per_stream=stream_rates,
         target_fps=target,
         feed_rate_fps=pace,
         full_rate_fps=len(frames) / (tend - t0),
