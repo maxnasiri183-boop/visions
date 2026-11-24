@@ -526,13 +526,29 @@ async def photo_case(page, base, root, out, known):
     assert any(
         r["gallery_label"] == "enrolled" and r["sha256"] == digest for r in saved
     )
-    await page.locator("input[type=file]").set_input_files(probe)
+    upload_started, finish_upload = asyncio.Event(), asyncio.Event()
+
+    async def hold_upload(route):
+        upload_started.set()
+        await finish_upload.wait()
+        await route.continue_()
+
+    endpoint = "**/api/identity/probes"
+    await page.route(endpoint, hold_upload)
+    try:
+        await page.locator("input[type=file]").set_input_files(probe)
+        await asyncio.wait_for(upload_started.wait(), timeout=10)
+        await page.locator("select").first.select_option("studio")
+    finally:
+        finish_upload.set()
     async with page.expect_response(
         lambda r: urlparse(r.url).path == "/api/identity/search"
     ) as event:
         await button(page, "جست‌وجوی حضورها").click()
+    await page.unroute(endpoint, hold_upload)
     groups = (await (await event.value).json())["groups"]
     assert groups, "Expected an appearance from the independent enrolled probe"
+    assert all(group["source_id"] == "studio" for group in groups)
     # Retrieval includes unknown gallery decisions. Open an actual ranked, known result.
     with database(root) as db:
         for index, group in enumerate(groups):
