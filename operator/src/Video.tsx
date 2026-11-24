@@ -210,8 +210,8 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
   );
   const windowAt = Math.floor(clock / 3) * 3;
   const timeline = useData<{ items: Frame[] }>(
-    path + "/frames?at=" + windowAt,
-    rec.finished_at ? 0 : 900,
+    path + (follow ? "/frames?live=1" : "/frames?at=" + windowAt),
+    rec.finished_at ? 0 : follow ? 400 : 900,
   );
   const [loaded, setLoaded] = useState<Frame[]>([]);
   useEffect(() => {
@@ -244,16 +244,21 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
       seek(initial.value.at + 0.00001);
     }
   }, [ready, initial.value]);
+  const liveLimit = useRef<number>();
+  useLayoutEffect(() => {
+    liveLimit.current = follow ? loaded.at(-1)?.media_pts_s : undefined;
+  }, [follow, loaded]);
   useEffect(() => {
     const video = v.current;
-    if (!video || !ready || !follow) return;
-    const edge = Math.max(
-      0,
-      ((rec.last_frame - 3) * rec.duration_s) / rec.frame_count,
-    );
-    if (Math.abs(video.currentTime - edge) > 1.2) seek(edge);
-    void video.play().catch(() => setPlaying(false));
-  }, [rec.last_frame, follow, ready]);
+    const end = liveLimit.current;
+    if (!video || !ready || !follow || end === undefined) return;
+    const first = loaded[0].media_pts_s;
+    const buffered = Math.max(first, end - 1);
+    if (video.currentTime < first || video.currentTime > end + 0.002 ||
+        video.currentTime < buffered - 1) seek(buffered);
+    if (end - video.currentTime >= 0.2)
+      void video.play().catch(() => setPlaying(false));
+  }, [loaded, follow, ready]);
   useLayoutEffect(() => {
     const s = stage.current!,
       video = v.current!;
@@ -274,14 +279,28 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
   useEffect(() => {
     const video = v.current!;
     let ticket = 0;
+    function display(pts: number) {
+      const limit = liveLimit.current;
+      if (limit !== undefined && pts >= limit && !video.paused) {
+        video.pause();
+        if (Math.abs(video.currentTime - limit) > 0.002)
+          video.currentTime = limit + 0.00001;
+        setClock(limit);
+      } else {
+        setClock(pts);
+      }
+    }
     function tick(_: number, metadata: VideoFrameCallbackMetadata) {
-      setClock(metadata.mediaTime);
+      display(metadata.mediaTime);
       ticket = video.requestVideoFrameCallback(tick);
     }
+    const updateTime = () => display(video.currentTime);
     if (video.requestVideoFrameCallback)
       ticket = video.requestVideoFrameCallback(tick);
+    else video.addEventListener("timeupdate", updateTime);
     return () => {
       if (ticket) video.cancelVideoFrameCallback(ticket);
+      video.removeEventListener("timeupdate", updateTime);
     };
   }, []);
   const mobile = useMedia("(max-width: 760px)");
@@ -361,13 +380,6 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
               src={path + "/media"}
               onLoadedMetadata={() => setReady(true)}
               onSeeked={() => setClock(v.current?.currentTime || 0)}
-              onTimeUpdate={() => {
-                if (
-                  v.current &&
-                  typeof v.current.requestVideoFrameCallback !== "function"
-                )
-                  setClock(v.current.currentTime);
-              }}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
               onError={() =>
