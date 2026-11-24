@@ -1,0 +1,26 @@
+name: visions-operator
+x-common: &operator
+  image: visions-operator:local
+  build:
+    context: .
+    dockerfile: operator/Dockerfile
+  init: true
+  user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  volumes:
+    - ./private/operator:/data
+    - ./private/yunet.onnx:/models/yunet.onnx:ro
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+services:
+  operator-ui:
+    <<: *operator
+    ports: ["127.0.0.1:8092:8092"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
