@@ -1,0 +1,5 @@
+**
+!feed/
+!feed/*.py
+!deploy/
+!deploy/detections.sql

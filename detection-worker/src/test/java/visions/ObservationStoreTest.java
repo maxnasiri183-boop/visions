@@ -29,7 +29,7 @@ public class ObservationStoreTest {
       }
     };
     var store = new ObservationStore(client, "test");
-    assertArrayEquals(winner, store.resolve("key", () -> new byte[0]).bytes());
-    assertArrayEquals(winner, store.resolve("key", () -> { throw new AssertionError("unexpected inference"); }).bytes());
+    assertArrayEquals(winner, store.resolve("key", java.time.Instant.EPOCH, () -> new byte[0]).bytes());
+    assertArrayEquals(winner, store.resolve("key", java.time.Instant.EPOCH, () -> { throw new AssertionError("unexpected inference"); }).bytes());
   }
 }

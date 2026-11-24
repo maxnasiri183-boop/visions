@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.*;
 import java.awt.image.*;
 import java.io.*;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -53,9 +54,15 @@ final class FileFeed {
   }
 
   void play(double speed, int selected, int loops, Receiver receiver) throws Exception {
-    if (!Double.isFinite(speed) || speed <= 0 || loops < 1 || selected < -1 || selected >= frames.size())
+    playFrom(speed, selected, loops, 0, null, receiver);
+  }
+
+  void playFrom(double speed, int selected, int loops, int firstFrame, Instant scheduledAt, Receiver receiver) throws Exception {
+    if (!Double.isFinite(speed) || speed <= 0 || loops < 1 || selected < -1 || selected >= frames.size()
+        || firstFrame < 0 || firstFrame > frames.size())
       throw new IllegalArgumentException(
           "Expected positive finite speed and an existing frame index");
+    if (firstFrame == frames.size()) return;
     var decoder =
         new ProcessBuilder(
                 "ffmpeg",
@@ -84,7 +91,10 @@ final class FileFeed {
             .start();
     var image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
     byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-    long firstPts = pts(0), start = System.nanoTime();
+    long firstPts = pts(scheduledAt == null ? firstFrame : 0);
+    long started = System.nanoTime();
+    long clockStart = scheduledAt == null ? started
+        : started + Duration.between(Instant.now(), scheduledAt).toNanos();
     int framesPerLoop = frames.size();
     // Sustained mode uses the pinned constant-rate fixture.
     long period = loops == 1 ? 0 : pts(framesPerLoop - 1) - firstPts + pts(1) - firstPts;
@@ -93,9 +103,11 @@ final class FileFeed {
         long readStarted = System.nanoTime();
         input.readFully(pixels);
         double readMs = (System.nanoTime() - readStarted) / 1e6;
+        if (i < firstFrame) continue;
+        if (scheduledAt == null && firstFrame > 0 && i == firstFrame) clockStart = System.nanoTime();
         long timestamp = pts(i % framesPerLoop) + (i / framesPerLoop) * period;
         long due =
-            start
+            clockStart
                 + (long) ((timestamp - firstPts) * 1e9 * timeBase.get(0) / timeBase.get(1) / speed);
         TimeUnit.NANOSECONDS.sleep(Math.max(0, due - System.nanoTime()));
         if (selected == -1 || i == selected)
@@ -109,7 +121,7 @@ final class FileFeed {
     }
     System.out.printf(
         "decoded_frames=%d selected_frame=%d speed=%.3f elapsed_s=%.3f%n",
-        framesPerLoop * loops, selected, speed, (System.nanoTime() - start) / 1e9);
+        framesPerLoop * loops, selected, speed, (System.nanoTime() - started) / 1e9);
   }
 
   private long pts(int index) {

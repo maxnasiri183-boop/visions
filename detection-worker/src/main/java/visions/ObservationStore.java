@@ -1,5 +1,7 @@
 package visions;
 
+import java.time.Instant;
+import java.util.Map;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -9,8 +11,8 @@ final class ObservationStore {
     byte[] create() throws Exception;
   }
 
-  record Saved(byte[] bytes, double ioMs) {}
-
+  record Saved(byte[] bytes, String ingestedAt, double ioMs) {}
+  private static final String INGESTED_AT = "frame-ingested-at";
   private final S3Client client;
   final String bucket;
 
@@ -19,11 +21,10 @@ final class ObservationStore {
     this.bucket = bucket;
   }
 
-  Saved resolve(String key, Proposal proposal) throws Exception {
+  Saved resolve(String key, Instant ingestedAt, Proposal proposal) throws Exception {
     long start = System.nanoTime();
     try {
-      byte[] bytes = read(key);
-      return new Saved(bytes, elapsedMs(start));
+      return read(key, 0);
     } catch (S3Exception missing) {
       if (missing.statusCode() != 404) throw missing;
     }
@@ -31,17 +32,21 @@ final class ObservationStore {
     byte[] bytes = proposal.create();
     start = System.nanoTime();
     try {
-      client.putObject(r -> r.bucket(bucket).key(key).contentType("application/json").ifNoneMatch("*"),
+      client.putObject(r -> r.bucket(bucket).key(key).contentType("application/json")
+              .metadata(Map.of(INGESTED_AT, ingestedAt.toString())).ifNoneMatch("*"),
           RequestBody.fromBytes(bytes));
+      return new Saved(bytes, ingestedAt.toString(), lookupMs + elapsedMs(start));
     } catch (S3Exception conflict) {
       if (conflict.statusCode() != 409 && conflict.statusCode() != 412) throw conflict;
-      bytes = read(key);
+      return read(key, lookupMs + elapsedMs(start));
     }
-    return new Saved(bytes, lookupMs + elapsedMs(start));
   }
 
-  private byte[] read(String key) {
-    return client.getObjectAsBytes(r -> r.bucket(bucket).key(key)).asByteArray();
+  private Saved read(String key, double priorMs) {
+    long start = System.nanoTime();
+    var response = client.getObjectAsBytes(r -> r.bucket(bucket).key(key));
+    return new Saved(response.asByteArray(), response.response().metadata().get(INGESTED_AT),
+        priorMs + elapsedMs(start));
   }
 
   private static double elapsedMs(long start) {

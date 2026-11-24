@@ -1,5 +1,6 @@
 package visions;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,7 +27,12 @@ final class FrameProcessor {
     this.json = json;
   }
 
-  void process(FileFeed feed, FileFeed.Frame frame, String source, String asset, boolean warmup)
+  private record Published(JsonNode event, String topic, int partition, long offset) {}
+  private record FrameEvent(int schema_version, String source_id, String asset_sha256,
+      String detector_version, int video_track, int frame_index, long pts, List<Integer> time_base,
+      List<Integer> frame_size, String frame_ingested_at, String manifest_key, List<Published> detections) {}
+
+  void process(FileFeed feed, FileFeed.Frame frame, String source, String asset, boolean warmup, boolean emitFrameEvent)
       throws Exception {
     String manifest = "frames/" + source + "/" + asset + "/" + VERSION + "/v0/" + frame.index() + ".json";
     var stats = new LinkedHashMap<String, Object>();
@@ -38,17 +44,30 @@ final class FrameProcessor {
     stats.put("decode_ms", frame.decodeMs());
     stats.put("lag_ms", frame.lagMs());
     stats.put("ran_inference", false);
-    var saved = observations.resolve(manifest, () ->
+    var saved = observations.resolve(manifest, frame.ingested(), () ->
         json.writeValueAsBytes(detect(feed, frame, source, asset, stats)));
     stats.put("manifest_io_ms", saved.ioMs());
     var events = json.readTree(saved.bytes());
     long start = System.nanoTime();
-    for (var event : events) publisher.publish(event);
+    var published = new ArrayList<Published>(events.size());
+    for (var event : events) {
+      var ack = publisher.publish(event);
+      if (emitFrameEvent) published.add(new Published(event, ack.topic(), ack.partition(), ack.offset()));
+    }
     stats.put("kafka_publish_ms", events.isEmpty() ? 0 : (System.nanoTime() - start) / 1e6);
     stats.put("detections", events.size());
     stats.put("wall_time", Instant.now().toEpochMilli() / 1000.0);
     System.out.println("manifest=s3://" + observations.bucket + "/" + manifest);
     System.out.println("frame_stats=" + json.writeValueAsString(stats));
+    if (emitFrameEvent) {
+      String ingestedAt = saved.ingestedAt();
+      if (ingestedAt == null && !events.isEmpty()) {
+        ingestedAt = events.get(0).required("frame_ingested_at").asText();
+      }
+      var complete = new FrameEvent(1, source, asset, VERSION, 0, frame.index(), frame.pts(),
+          feed.timeBase, List.of(feed.width, feed.height), ingestedAt, manifest, published);
+      System.out.println("frame_event=" + json.writeValueAsString(complete));
+    }
   }
 
   private List<Detection> detect(FileFeed feed, FileFeed.Frame frame, String source,
