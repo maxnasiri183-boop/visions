@@ -6,7 +6,7 @@
     "operator"
   ],
   "schemaVersion": 41,
-  "version": 1,
+  "version": 2,
   "timezone": "utc",
   "editable": false,
   "refresh": "5s",
@@ -17,6 +17,586 @@
   "panels": [
     {
       "type": "timeseries",
+      "id": 1,
+      "title": "Frames per second",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(visions_operator_observed_input_fps and on() (up{job=\"operator\"} == 1))",
+          "legendFormat": "All · observed input",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(visions_operator_processed_fps and on() (up{job=\"operator\"} == 1))",
+          "legendFormat": "All · processed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(visions_operator_target_fps and on() (up{job=\"operator\"} == 1))",
+          "legendFormat": "All · playout target",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "visions_operator_observed_input_fps and on() (up{job=\"operator\"} == 1)",
+          "legendFormat": "{{source}} · observed input",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "E",
+          "expr": "visions_operator_processed_fps and on() (up{job=\"operator\"} == 1)",
+          "legendFormat": "{{source}} · processed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "F",
+          "expr": "visions_operator_target_fps and on() (up{job=\"operator\"} == 1)",
+          "legendFormat": "{{source}} · playout target",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fps",
+          "noValue": "No measurements"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Observed input counts pre-inference decoded frame receipts, including retry reads, over 5 s. Processed counts first durable frame commits over 5 s. Target uses source FPS × the current occurrence feed speed. All sums are per scrape."
+    },
+    {
+      "type": "timeseries",
+      "id": 17,
+      "title": "Face observations per second",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(visions_operator_published_observations_total[1m]) and on() (visions_operator_publication_observer_available == 1))",
+          "legendFormat": "All · published",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(visions_operator_sql_visible_observations_total[1m]) and on() (visions_operator_sql_observer_available == 1))",
+          "legendFormat": "All · first SQL-visible",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "rate(visions_operator_published_observations_total[1m]) and on() (visions_operator_publication_observer_available == 1)",
+          "legendFormat": "{{source}} · published",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "rate(visions_operator_sql_visible_observations_total[1m]) and on() (visions_operator_sql_observer_available == 1)",
+          "legendFormat": "{{source}} · first SQL-visible",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: obs/s",
+          "noValue": "No measurements"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Trailing 1 min. Published counts physical Kafka messages including replay. SQL-visible counts each detection ID on its first successful SQL visibility check. Zero requires an available observer; missing samples leave a gap."
+    },
+    {
+      "type": "stat",
+      "id": 28,
+      "title": "New observations in selected time range",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((last_over_time(visions_operator_sql_visible_observations_total[$__range]) - min_over_time(visions_operator_sql_visible_observations_total[$__range])) and (count_over_time(visions_operator_sql_visible_observations_total[$__range]) >= 2) and (resets(visions_operator_sql_visible_observations_total[$__range]) == 0))",
+          "legendFormat": "All · new SQL-visible",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "(last_over_time(visions_operator_sql_visible_observations_total[$__range]) - min_over_time(visions_operator_sql_visible_observations_total[$__range])) and (count_over_time(visions_operator_sql_visible_observations_total[$__range]) >= 2) and (resets(visions_operator_sql_visible_observations_total[$__range]) == 0)",
+          "legendFormat": "{{source}} · new SQL-visible",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No measurements",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "light-blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "description": "Exact increase between the first and last actual counter scrapes inside the time selection. The active run's per-source counters only increase. Unobserved fractions of scrape intervals are excluded. A source needs at least two samples and a continuous counter in the selected range."
+    },
+    {
+      "type": "stat",
+      "id": 29,
+      "title": "Gallery identities and SQL observations",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_gallery_people",
+          "legendFormat": "Gallery identities",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_retained_sql_rows",
+          "legendFormat": "Retained SQL observations",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum(visions_operator_sql_visible_observations_total)",
+          "legendFormat": "Cumulative SQL observations",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No measurements",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "light-blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "description": "Gallery identities count distinct people with an eligible reference in the published version. Retained SQL observations query the current primary-key table across all runs. Cumulative distinct observations are first SQL sightings for the active run, including expired evidence. Retained SQL population is independently sampled at most once per five minutes. See Measurement availability and Time since latest checkpoint for count status and sample age."
+    },
+    {
+      "type": "stat",
+      "id": 30,
+      "title": "Measurement availability",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(max(up{job=\"operator\"}) + 2) or vector(-1)",
+          "legendFormat": "Exporter",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "((sum(visions_operator_observed_input_fps) > bool 0) and on() (up{job=\"operator\"} == 1)) or vector(-1)",
+          "legendFormat": "Input activity",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "expr": "(max(visions_operator_publication_observer_available)+2) or vector(-1)",
+          "legendFormat": "Kafka observer",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "expr": "(max(visions_operator_sql_observer_available)+2) or vector(-1)",
+          "legendFormat": "SQL observer",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "expr": "(max(visions_operator_retained_sql_sample_available)+2) or vector(-1)",
+          "legendFormat": "Retained SQL sample",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          },
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No measurements",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "Missing telemetry",
+                  "color": "gray",
+                  "index": 0
+                },
+                "0": {
+                  "text": "No traffic",
+                  "color": "blue",
+                  "index": 1
+                },
+                "1": {
+                  "text": "Receiving frames",
+                  "color": "green",
+                  "index": 2
+                },
+                "2": {
+                  "text": "Unavailable",
+                  "color": "red",
+                  "index": 3
+                },
+                "3": {
+                  "text": "Available",
+                  "color": "green",
+                  "index": 4
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "description": "Prometheus availability is independent of the exporter. No traffic means there are no input receipts in the recent 5 s. Missing telemetry, a failed scrape, and an unavailable Kafka or SQL observer are different states."
+    },
+    {
+      "type": "timeseries",
+      "id": 31,
+      "title": "Ingestion to SQL visibility p95 · 5 min",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_stage_seconds{stage=\"sql_visibility\",quantile=\"p95\"}",
+          "legendFormat": "All sources",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_source_sql_p95_seconds",
+          "legendFormat": "{{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No measurements"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Wall-clock frame_ingested_at to first successful SQL poll for unique detections. Nearest-rank p95. All uses the pooled samples; a source with no recent SQL observations has no percentile."
+    },
+    {
+      "type": "timeseries",
+      "id": 18,
+      "title": "Completed frame accounting",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_completed_expected_frames",
+          "legendFormat": "{{source}} · expected",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_completed_missing_frames",
+          "legendFormat": "{{source}} · missing",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "visions_operator_intentionally_skipped_frames",
+          "legendFormat": "{{source}} · intentionally sampled out",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 11,
+      "title": "Routine Load offset lag",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_routine_load_lag",
+          "legendFormat": "Kafka records",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
       "id": 15,
       "title": "Source online and telemetry freshness",
       "datasource": {
@@ -25,15 +605,15 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
-        "h": 8,
-        "w": 12
+        "y": 32,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
           "refId": "A",
           "expr": "visions_operator_source_online",
-          "legendFormat": "{{source}} \u00b7 online",
+          "legendFormat": "{{source}} · online",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -42,7 +622,7 @@
         {
           "refId": "B",
           "expr": "1 - visions_operator_stale",
-          "legendFormat": "{{source}} \u00b7 recent processed frames",
+          "legendFormat": "{{source}} · recent processed frames",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -78,23 +658,23 @@
     },
     {
       "type": "timeseries",
-      "id": 1,
-      "title": "Playout target and measured throughput \u00b7 5 s",
+      "id": 2,
+      "title": "Waiting queue and current frame lateness",
       "datasource": {
         "type": "prometheus",
         "uid": "visions-metrics"
       },
       "gridPos": {
         "x": 12,
-        "y": 0,
-        "h": 8,
-        "w": 12
+        "y": 32,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "visions_operator_target_fps",
-          "legendFormat": "{{source}} \u00b7 playout target",
+          "expr": "visions_operator_waiting_queue_age_seconds",
+          "legendFormat": "{{source}} · waiting",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -102,26 +682,8 @@
         },
         {
           "refId": "B",
-          "expr": "visions_operator_decoded_fps",
-          "legendFormat": "{{source}} \u00b7 decoded",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        },
-        {
-          "refId": "C",
-          "expr": "visions_operator_inference_fps",
-          "legendFormat": "{{source}} \u00b7 inference",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        },
-        {
-          "refId": "D",
-          "expr": "visions_operator_processed_fps",
-          "legendFormat": "{{source}} \u00b7 processed",
+          "expr": "visions_operator_recent_playout_lateness_seconds",
+          "legendFormat": "{{source}} · frame",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -130,7 +692,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "fps"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -143,22 +705,21 @@
         "tooltip": {
           "mode": "multi"
         }
-      },
-      "description": "The catalog specifies the file rate. Decoded FPS measures distinct frame admissions. Inference FPS counts actual forwards."
+      }
     },
     {
       "type": "timeseries",
       "id": 3,
-      "title": "Ingress to SQL and searchable index \u00b7 5 min",
+      "title": "Ingress to SQL and searchable index · 5 min",
       "datasource": {
         "type": "prometheus",
         "uid": "visions-metrics"
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
-        "h": 8,
-        "w": 12
+        "y": 40,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -191,57 +752,6 @@
     },
     {
       "type": "timeseries",
-      "id": 2,
-      "title": "Waiting queue and current frame lateness",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "visions-metrics"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 8,
-        "h": 8,
-        "w": 12
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "visions_operator_waiting_queue_age_seconds",
-          "legendFormat": "{{source}} \u00b7 waiting",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        },
-        {
-          "refId": "B",
-          "expr": "visions_operator_recent_playout_lateness_seconds",
-          "legendFormat": "{{source}} \u00b7 frame",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "type": "timeseries",
       "id": 16,
       "title": "Time since latest checkpoint",
       "datasource": {
@@ -249,16 +759,16 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 16,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
           "refId": "A",
           "expr": "time() - visions_operator_latest_decoded_at",
-          "legendFormat": "{{source}} \u00b7 decoded",
+          "legendFormat": "{{source}} · decoded",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -267,7 +777,7 @@
         {
           "refId": "B",
           "expr": "time() - visions_operator_latest_processed_at",
-          "legendFormat": "{{source}} \u00b7 processed",
+          "legendFormat": "{{source}} · processed",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -281,6 +791,15 @@
             "type": "prometheus",
             "uid": "visions-metrics"
           }
+        },
+        {
+          "refId": "D",
+          "expr": "visions_operator_retained_sql_sample_age_seconds",
+          "legendFormat": "Retained SQL row sample age",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
         }
       ],
       "fieldConfig": {
@@ -303,23 +822,41 @@
     },
     {
       "type": "timeseries",
-      "id": 17,
-      "title": "Faces observed per second \u00b7 5 s",
+      "id": 32,
+      "title": "Publication observer continuity",
       "datasource": {
         "type": "prometheus",
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 16,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "visions_operator_detections_per_second",
-          "legendFormat": "{{source}} \u00b7 detections/s",
+          "expr": "visions_operator_publication_observer_lag",
+          "legendFormat": "Reader offset lag",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_publication_missed_offsets",
+          "legendFormat": "Missed offsets",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "visions_operator_publication_unmapped_records",
+          "legendFormat": "Unmapped records",
           "datasource": {
             "type": "prometheus",
             "uid": "visions-metrics"
@@ -328,7 +865,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "ops"
+          "unit": "short",
+          "noValue": "No measurements"
         },
         "overrides": []
       },
@@ -342,21 +880,21 @@
           "mode": "multi"
         }
       },
-      "description": ""
+      "description": "Unmapped messages can belong to other isolated runs with their own occurrence database. Missed offsets indicate that Kafka retention advanced past the durable checkpoint. A nonzero missed count marks incomplete historical coverage."
     },
     {
       "type": "timeseries",
       "id": 4,
-      "title": "Detection and recognition stages \u00b7 5 min",
+      "title": "Detection and recognition stages · 5 min",
       "datasource": {
         "type": "prometheus",
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 24,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -389,16 +927,16 @@
     {
       "type": "timeseries",
       "id": 6,
-      "title": "Samples in stage percentiles \u00b7 5 min",
+      "title": "Samples in stage percentiles · 5 min",
       "datasource": {
         "type": "prometheus",
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 24,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -431,16 +969,16 @@
     {
       "type": "timeseries",
       "id": 5,
-      "title": "Playout lateness \u00b7 5 min",
+      "title": "Playout lateness · 5 min",
       "datasource": {
         "type": "prometheus",
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 32,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -472,67 +1010,6 @@
     },
     {
       "type": "timeseries",
-      "id": 18,
-      "title": "Completed frame accounting",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "visions-metrics"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 32,
-        "h": 8,
-        "w": 12
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "visions_operator_completed_expected_frames",
-          "legendFormat": "{{source}} \u00b7 expected",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        },
-        {
-          "refId": "B",
-          "expr": "visions_operator_completed_missing_frames",
-          "legendFormat": "{{source}} \u00b7 missing",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        },
-        {
-          "refId": "C",
-          "expr": "visions_operator_intentionally_skipped_frames",
-          "legendFormat": "{{source}} \u00b7 intentionally sampled out",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "description": ""
-    },
-    {
-      "type": "timeseries",
       "id": 7,
       "title": "SQL observations awaiting first visible row",
       "datasource": {
@@ -541,9 +1018,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
-        "h": 8,
-        "w": 12
+        "y": 64,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -583,9 +1060,9 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 40,
-        "h": 8,
-        "w": 12
+        "y": 64,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -644,9 +1121,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
-        "h": 8,
-        "w": 12
+        "y": 72,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -696,9 +1173,9 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 48,
-        "h": 8,
-        "w": 12
+        "y": 72,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -731,48 +1208,6 @@
     },
     {
       "type": "timeseries",
-      "id": 11,
-      "title": "Routine Load offset lag",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "visions-metrics"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 56,
-        "h": 8,
-        "w": 12
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "visions_operator_routine_load_lag",
-          "legendFormat": "Kafka records",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "visions-metrics"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "type": "timeseries",
       "id": 12,
       "title": "Rejected Routine Load rows",
       "datasource": {
@@ -780,10 +1215,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 56,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 80,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -822,10 +1257,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 64,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 80,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -864,10 +1299,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 64,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 88,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -906,10 +1341,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 72,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 88,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -949,10 +1384,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 72,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 96,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -992,10 +1427,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 80,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 96,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -1034,10 +1469,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 80,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 104,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -1095,10 +1530,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 88,
-        "h": 8,
-        "w": 12
+        "x": 12,
+        "y": 104,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -1137,10 +1572,10 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 88,
-        "h": 8,
-        "w": 12
+        "x": 0,
+        "y": 112,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
@@ -1180,8 +1615,8 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 0,
-        "y": 96,
+        "x": 12,
+        "y": 112,
         "w": 12,
         "h": 8
       },
@@ -1232,8 +1667,8 @@
         "uid": "visions-metrics"
       },
       "gridPos": {
-        "x": 12,
-        "y": 96,
+        "x": 0,
+        "y": 120,
         "w": 12,
         "h": 8
       },

@@ -12,6 +12,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from db import DATA, DB
+from throughput import monitor_publications
 
 WINDOW = 300
 STAGES = (
@@ -24,6 +25,10 @@ STAGES = (
 )
 IDENTITY_STAGES = ("align_ms", "embed_ms", "lookup_ms")
 SNAPSHOT = None
+POPULATION_INTERVAL = 300
+SQL_POPULATION = {"value": None, "sampled_at": None, "available": False}
+LEGACY_GALLERY = None
+PUBLICATION_OBSERVER = {"observed_at": 0, "lag": None, "error": "starting"}
 
 
 def reader(path):
@@ -68,6 +73,40 @@ def routine_load():
         }
 
 
+def sample_populations():
+    """Isolate table-wide counts from the fast, per-source telemetry loop."""
+    from backend import sql
+
+    global LEGACY_GALLERY
+    while True:
+        try:
+            with sql() as db, db.cursor() as cursor:
+                cursor.execute(
+                    "SELECT count(*) AS n FROM visions_operator.face_detections"
+                )
+                SQL_POPULATION.update(
+                    value=cursor.fetchone()["n"], sampled_at=time.time(), available=True
+                )
+        except Exception as error:
+            SQL_POPULATION.update(available=False)
+            print(
+                f"Retained SQL population unavailable: {type(error).__name__}",
+                flush=True,
+            )
+        try:
+            with reader(DATA / "identity.sqlite") as db:
+                if not db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='gallery_counts'"
+                ).fetchone():
+                    LEGACY_GALLERY = db.execute(
+                        "SELECT count(DISTINCT r.person_id) FROM membership m "
+                        "JOIN refs r USING(reference_id) WHERE m.version=(SELECT max(version) FROM versions)"
+                    ).fetchone()[0]
+        except sqlite3.Error:
+            LEGACY_GALLERY = None
+        time.sleep(POPULATION_INTERVAL)
+
+
 def snapshot():
     run = os.environ["FEED_RUN_ID"]
     now = time.time()
@@ -80,6 +119,17 @@ def snapshot():
         "disk_free_bytes": shutil.disk_usage(DATA).free,
         "retention_seconds": int(os.environ.get("FEED_RETENTION_SECONDS", 3600)),
     }
+    population = dict(SQL_POPULATION)
+    age = (
+        now - population["sampled_at"] if population["sampled_at"] is not None else None
+    )
+    result["retained_sql_sample_age_seconds"] = age
+    result["retained_sql_sample_available"] = (
+        population["available"] and age is not None and age <= 2 * POPULATION_INTERVAL
+    )
+    result["retained_sql_rows"] = (
+        population["value"] if result["retained_sql_sample_available"] else None
+    )
     stages = defaultdict(list)
     with reader(DB) as db:
         db.execute("BEGIN")
@@ -94,6 +144,40 @@ def snapshot():
             or {}
         )
         result["sources"] = []
+        result["publication_offsets"] = {
+            str(r[0]): r[1]
+            for r in db.execute(
+                "SELECT partition_id,next_offset FROM throughput_cursor"
+            )
+        }
+        observer = dict(PUBLICATION_OBSERVER)
+        result["publication_observer_available"] = (
+            not observer["error"] and now - observer["observed_at"] < 15
+        )
+        result["publication_observer_lag"] = (
+            observer["lag"] if result["publication_observer_available"] else None
+        )
+        cursor = db.execute(
+            "SELECT min(started_at),sum(missed_offsets),sum(unmapped) FROM throughput_cursor"
+        ).fetchone()
+        (
+            result["publication_counting_since"],
+            result["publication_missed_offsets"],
+            result["publication_unmapped_records"],
+        ) = cursor
+        sql_observer = next(
+            (s for s in result["services"] if s["service"] == "sql-observer"), {}
+        )
+        result["sql_observer_available"] = (
+            sql_observer.get("state") == "active"
+            and now - sql_observer.get("heartbeat_at", 0) < 15
+        )
+        totals = {
+            r["source_id"]: r
+            for r in db.execute(
+                "SELECT * FROM throughput_source WHERE run_id=?", (run,)
+            )
+        }
         for row in db.execute(
             "SELECT source_id,max(sequence) FROM occurrences WHERE run_id=? GROUP BY source_id",
             (run,),
@@ -144,6 +228,12 @@ def snapshot():
                 "FROM occurrences WHERE run_id=? AND source_id=? AND state IN('complete','expired')",
                 (run, source),
             ).fetchone()
+            # A source with historical receipts but current completions on an incompatible worker
+            # has missing ingress instrumentation; presenting it as idle hides deployment regressions.
+            ingress_measured = received is not None and (
+                not rate or now - received["observed_at"] < 15
+            )
+            counted = totals.get(source, {})
             result["sources"].append(
                 {
                     "source_id": source,
@@ -161,10 +251,16 @@ def snapshot():
                     "completed_expected_frames": completed[0],
                     "completed_missing_frames": completed[1],
                     "intentionally_skipped_frames": 0,
-                    "observed_input_fps": None,
-                    "decoded_fps": decoded / 5 if received else None,
+                    "observed_input_fps": decoded / 5 if ingress_measured else None,
+                    "published_observations_total": counted["published"]
+                    if counted
+                    else 0,
+                    "sql_visible_observations_total": counted["sql_visible"]
+                    if counted
+                    else 0,
+                    "decoded_fps": decoded / 5 if ingress_measured else None,
                     "latest_decoded": dict(received) if received else None,
-                    "input_measurement": "File playout target; independent ingress counter unavailable",
+                    "input_measurement": "Decoded source frames received by the detector before inference; receipts include retry reads",
                     "target_fps": active["frame_count"]
                     * active["speed"]
                     / active["duration_s"],
@@ -196,8 +292,10 @@ def snapshot():
                 }
             )
         # One wall-clock first-observed SQL timestamp per detection.
+        sql_by_source = defaultdict(list)
+        sql_watermarks = {}
         for r in db.execute(
-            "SELECT ob.sql_visible_at,f.ingested_at FROM observations ob JOIN occurrences o USING(occurrence_id) "
+            "SELECT o.source_id,ob.sql_visible_at,f.ingested_at FROM observations ob JOIN occurrences o USING(occurrence_id) "
             "JOIN frames f ON ob.occurrence_id=f.occurrence_id AND ob.frame_index=f.frame_index "
             "WHERE o.run_id=? AND ob.sql_visible_at>=?",
             (run, cutoff),
@@ -207,6 +305,13 @@ def snapshot():
                     r["sql_visible_at"]
                     - datetime.fromisoformat(r["ingested_at"]).timestamp()
                 )
+                sql_by_source[r["source_id"]].append(stages["sql_visibility"][-1])
+                sql_watermarks[r["source_id"]] = max(
+                    sql_watermarks.get(r["source_id"], 0), r["sql_visible_at"]
+                )
+        for source in result["sources"]:
+            source["sql_latency"] = dist(sql_by_source[source["source_id"]])
+            source["last_sql_visible_at"] = sql_watermarks.get(source["source_id"])
         for item in db.execute(
             "SELECT ob.search_visible_at,f.ingested_at FROM observations ob "
             "JOIN frames f ON ob.occurrence_id=f.occurrence_id AND ob.frame_index=f.frame_index "
@@ -258,13 +363,31 @@ def snapshot():
         ]
     result["routine_load"] = routine_load()
     result["identity_available"] = False
+    result["gallery_people"] = None
     try:
         with reader(DATA / "identity.sqlite") as ident:
+            if ident.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='gallery_counts'"
+            ).fetchone():
+                result["gallery_people"] = ident.execute(
+                    "SELECT coalesce((SELECT people FROM gallery_counts WHERE scope=(SELECT max(version) FROM versions)),0)"
+                ).fetchone()[0]
+            else:
+                result["gallery_people"] = LEGACY_GALLERY
             cols = {r[1] for r in ident.execute("PRAGMA table_info(indexed)")}
             measured = [x for x in IDENTITY_STAGES if x in cols]
             ident.execute("ATTACH DATABASE ? AS feed", (f"file:{DB}?mode=ro",))
+            fields = [
+                "i.state",
+                "i.ingested_at",
+                "i.indexed_at",
+                "(i.embedding IS NOT NULL) AS has_vector",
+                *("i." + m for m in measured),
+            ]
             rows = ident.execute(
-                "SELECT i.* FROM indexed i JOIN feed.occurrences o USING(occurrence_id) "
+                "SELECT "
+                + ",".join(fields)
+                + " FROM indexed i JOIN feed.occurrences o USING(occurrence_id) "
                 "WHERE o.run_id=? AND i.indexed_at>=?",
                 (run, cutoff),
             )
@@ -272,7 +395,7 @@ def snapshot():
                 for col in measured:
                     if row[col] is not None:
                         stages[col[:-3]].append(row[col] / 1000)
-                if row["state"] == "ready" and row["embedding"] is not None:
+                if row["state"] == "ready" and row["has_vector"]:
                     if row["ingested_at"]:
                         stages["identity_index"].append(
                             row["indexed_at"] - row["ingested_at"]
@@ -304,7 +427,12 @@ def snapshot():
 
 
 def scrape(report):
-    lines = []
+    lines = [
+        "# HELP visions_operator_published_observations_total Physical face messages consumed from the operator Kafka topic for this source.",
+        "# TYPE visions_operator_published_observations_total counter",
+        "# HELP visions_operator_sql_visible_observations_total Distinct detection IDs first observed in SQL for this source and feed run.",
+        "# TYPE visions_operator_sql_visible_observations_total counter",
+    ]
 
     def emit(key, value, **tags):
         if value is None:
@@ -317,6 +445,8 @@ def scrape(report):
             + str(float(value))
         )
 
+    for part, next_offset in report.get("publication_offsets", {}).items():
+        emit("publication_next_offset", next_offset, partition=part)
     for source in report.get("sources", []):
         for key in (
             "source_online",
@@ -326,6 +456,10 @@ def scrape(report):
             "completed_missing_frames",
             "intentionally_skipped_frames",
             "target_fps",
+            "observed_input_fps",
+            "published_observations_total",
+            "sql_visible_observations_total",
+            "last_sql_visible_at",
             "decoded_fps",
             "processed_fps",
             "inference_fps",
@@ -338,7 +472,20 @@ def scrape(report):
             "stale",
         ):
             emit(key, source[key], source=source["source_id"])
+        stats = source["sql_latency"]
+        emit("source_sql_p95_seconds", stats["p95"], source=source["source_id"])
+        emit("source_sql_samples", stats["count"], source=source["source_id"])
     for key in (
+        "publication_observer_available",
+        "publication_observer_lag",
+        "publication_counting_since",
+        "publication_missed_offsets",
+        "publication_unmapped_records",
+        "sql_observer_available",
+        "gallery_people",
+        "retained_sql_rows",
+        "retained_sql_sample_available",
+        "retained_sql_sample_age_seconds",
         "identity_pending",
         "identity_errors",
         "identity_quality_rejected",
@@ -418,5 +565,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    threading.Thread(
+        target=monitor_publications, args=(PUBLICATION_OBSERVER,), daemon=True
+    ).start()
+    threading.Thread(target=sample_populations, daemon=True).start()
     threading.Thread(target=collect, daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", 9125), Handler).serve_forever()
