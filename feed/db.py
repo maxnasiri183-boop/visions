@@ -94,32 +94,59 @@ def initialize():
         )
 
 
+def busy(error):
+    return getattr(error, "sqlite_errorcode", 0) & 255 in (
+        sqlite3.SQLITE_BUSY,
+        sqlite3.SQLITE_LOCKED,
+    )
+
+
 def state(db, service, status, detail=""):
-    now = time.time()
-    old = db.execute(
-        "SELECT state,detail,heartbeat_at FROM service_state WHERE service=?",
-        (service,),
-    ).fetchone()
-    if (
-        old is not None
-        and tuple(old)[:2] == (status, detail)
-        and now - old["heartbeat_at"] < 2
-    ):
-        return
-    if old is None or tuple(old)[:2] != (status, detail):
+    # A telemetry write may time out while frame transactions compete for SQLite's
+    # writer lock. Log the attempted transition and retry on the next heartbeat.
+    try:
+        now = time.time()
+        old = db.execute(
+            "SELECT state,detail,heartbeat_at FROM service_state WHERE service=?",
+            (service,),
+        ).fetchone()
+        if (
+            old is not None
+            and tuple(old)[:2] == (status, detail)
+            and now - old["heartbeat_at"] < 2
+        ):
+            return
+        changed = old is None or tuple(old)[:2] != (status, detail)
+        if changed:
+            db.execute(
+                "INSERT INTO notices VALUES(?,?,?,?)", (now, service, status, detail)
+            )
+        db.execute(
+            "INSERT OR REPLACE INTO service_state VALUES(?,?,?,?)",
+            (service, now, status, detail),
+        )
+        if changed:
+            print(
+                json.dumps(
+                    {"service": service, "state": status, "detail": detail, "at": now}
+                ),
+                flush=True,
+            )
+    except sqlite3.OperationalError as error:
+        if not busy(error):
+            raise
         print(
             json.dumps(
-                {"service": service, "state": status, "detail": detail, "at": now}
+                {
+                    "service": service,
+                    "state_write": "sqlite_busy",
+                    "requested": status,
+                    "detail": detail,
+                    "at": time.time(),
+                }
             ),
             flush=True,
         )
-        db.execute(
-            "INSERT INTO notices VALUES(?,?,?,?)", (now, service, status, detail)
-        )
-    db.execute(
-        "INSERT OR REPLACE INTO service_state VALUES(?,?,?,?)",
-        (service, now, status, detail),
-    )
 
 
 def local(path):

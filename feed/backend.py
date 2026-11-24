@@ -154,7 +154,10 @@ def search_visibility_loop():
     while not (DATA / "identity.sqlite").exists():
         state(db, "search-observer", "waiting_index")
         time.sleep(1)
-    db.execute("ATTACH DATABASE ? AS identity", (str(DATA / "identity.sqlite"),))
+    db.execute(
+        "ATTACH DATABASE ? AS identity",
+        ((DATA / "identity.sqlite").as_uri() + "?mode=ro",),
+    )
     while True:
         try:
             rows = db.execute(
@@ -162,15 +165,25 @@ def search_visibility_loop():
                 "FROM observations ob JOIN identity.indexed i USING(detection_id) "
                 "WHERE ob.search_state IS NULL LIMIT 1024"
             ).fetchall()
-            now = time.time()
-            db.execute("BEGIN IMMEDIATE")
-            for row in rows:
-                ready = row["state"] == "ready" and row["has_vector"]
-                db.execute(
-                    "UPDATE observations SET search_state=?,search_visible_at=? WHERE detection_id=?",
-                    (row["state"], now if ready else None, row["detection_id"]),
-                )
-            db.commit()
+            if rows:
+                now = time.time()
+                # IMMEDIATE would reserve every writable attached database, including
+                # the independent recognition index. Only this feed database is written.
+                with db:
+                    db.execute("BEGIN")
+                    db.executemany(
+                        "UPDATE observations SET search_state=?,search_visible_at=? WHERE detection_id=?",
+                        [
+                            (
+                                row["state"],
+                                now
+                                if row["state"] == "ready" and row["has_vector"]
+                                else None,
+                                row["detection_id"],
+                            )
+                            for row in rows
+                        ],
+                    )
             state(db, "search-observer", "active")
             time.sleep(0.2 if len(rows) < 1024 else 0.02)
         except Exception as error:
@@ -337,6 +350,7 @@ def expire():
                     (row["run_id"],),
                 )
                 db.commit()
+                state(db, "retention", "active", str(RETENTION) + " s")
             prune_media(db)
             state(db, "retention", "active", str(RETENTION) + " s")
             time.sleep(1 if rows else 8)
