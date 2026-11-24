@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 
 from . import core as c
+from .matching import ExactGallery
 
 
 class Decoder:
@@ -26,7 +27,9 @@ class Decoder:
         if key not in self.clips:
             if len(self.clips) == 8:
                 self.clips.popitem(last=False)[1][0].release()
-            cap = cv2.VideoCapture(retained, cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 1])
+            cap = cv2.VideoCapture(
+                retained, cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 1]
+            )
             self.clips[key] = (cap, -1, None)
         self.clips.move_to_end(key)
         cap, before, image = self.clips[key]
@@ -72,23 +75,22 @@ def classify(vector, refs, threshold):
     )
 
 
-def process(db, rows, decoder):
+def process(db, rows, decoder, gallery):
     active = db.execute(
         "SELECT * FROM versions WHERE model=? AND preprocessing=? AND policy=? ORDER BY version DESC LIMIT 1",
         (c.MODEL, c.PRE, c.POLICY),
     ).fetchone()
     ver = active["version"] if active else None
     cutoff = active["threshold"] if active else c.BASELINE
-    refs = db.execute(
-        "SELECT * FROM refs JOIN membership USING(reference_id) WHERE version=? ORDER BY reference_id",
-        (ver,),
-    ).fetchall()
+    gallery.load(db, ver)
     for row in rows:
         event = json.loads(row["event_json"])
         reason, vector = None, None
         timings = {}
         try:
-            img = decoder.frame(row["occurrence_id"], row["input_path"], row["frame_index"])
+            img = decoder.frame(
+                row["occurrence_id"], row["input_path"], row["frame_index"]
+            )
             if img.shape[:2] != (row["height"], row["width"]):
                 raise ValueError("Observation and source geometry differ")
             face = np.array(
@@ -107,7 +109,7 @@ def process(db, rows, decoder):
         decision = (
             (state, None, None, reason)
             if vector is None
-            else classify(vector, refs, cutoff)
+            else gallery.classify(vector, cutoff)
         )
         lookup_ms = (time.monotonic() - lookup) * 1000 if vector is not None else None
         stamp = datetime.fromisoformat(
@@ -164,6 +166,7 @@ def main():
         heartbeat.unlink(missing_ok=True)
     last_heartbeat = 0.0
     decoder = Decoder()
+    gallery = ExactGallery()
     c.engines()  # Fail startup if the model is missing or its hash differs.
     after, last_sweep = 0, 0
     while not stopping:
@@ -181,7 +184,7 @@ def main():
                     after = 0
                 rows = batch(db, after)
                 if rows:
-                    process(db, rows, decoder)
+                    process(db, rows, decoder, gallery)
                     after = rows[-1]["sequence"]
                 elif once:
                     return

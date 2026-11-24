@@ -87,19 +87,31 @@ def init():
             "min-side30-eye8-luma15:245-laplacian8-v1",
         )
         with db:
+            db.execute("BEGIN IMMEDIATE")
             db.execute(
-                "INSERT OR IGNORE INTO reference_features(reference_id,model,preprocessing,quality_policy) "
-                "SELECT reference_id,?,?,? FROM refs",
-                legacy,
+                "CREATE TABLE IF NOT EXISTS identity_migrations(name TEXT PRIMARY KEY)"
             )
-            db.execute(
-                "INSERT OR IGNORE INTO probe_lineage SELECT probe_id,?,?,? FROM probes",
-                legacy,
-            )
-            db.execute(
-                "INSERT OR IGNORE INTO observation_features SELECT detection_id,?,?,? FROM indexed",
-                legacy,
-            )
+            if not db.execute(
+                "SELECT 1 FROM identity_migrations WHERE name='legacy-lineage'"
+            ).fetchone():
+                db.execute(
+                    "INSERT OR IGNORE INTO reference_features(reference_id,model,preprocessing,quality_policy) "
+                    "SELECT reference_id,?,?,? FROM refs",
+                    legacy,
+                )
+                db.execute(
+                    "INSERT OR IGNORE INTO probe_lineage SELECT probe_id,?,?,? FROM probes",
+                    legacy,
+                )
+                db.execute(
+                    "INSERT OR IGNORE INTO observation_features SELECT detection_id,?,?,? FROM indexed",
+                    legacy,
+                )
+                db.execute("INSERT INTO identity_migrations VALUES('legacy-lineage')")
+
+        from .browse import initialize
+
+        initialize(db)
 
 
 @contextlib.contextmanager
@@ -349,7 +361,10 @@ def publish(calibration=None):
             "INSERT INTO membership VALUES(?,?)",
             [(version, r["reference_id"]) for r in refs],
         )
-    return next(v for v in gallery()["versions"] if v["version"] == version)
+    from .browse import versions
+
+    with connect() as db:
+        return next(v for v in versions(db, version) if v["version"] == version)
 
 
 def gallery(version=None):

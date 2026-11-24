@@ -9,6 +9,7 @@ from uuid import uuid4
 from flask import Blueprint, abort, jsonify, request, send_file
 
 from . import core as c
+from . import browse
 from .search import search
 
 bp = Blueprint("identity", __name__, url_prefix="/api/identity")
@@ -34,7 +35,78 @@ def file_bytes():
 @bp.get("/gallery")
 @bp.get("/gallery/<int:version>")
 def gallery(version=None):
-    return jsonify(c.gallery(version))
+    # Legacy clients retain the original shape for small galleries.
+    with c.connect() as db:
+        check_version(db, version)
+        versions = browse.versions(db, version)
+        join = (
+            "JOIN membership m USING(reference_id) WHERE m.version=?" if version else ""
+        )
+        refs = db.execute(
+            f"""SELECT r.*,f.model,f.preprocessing,f.quality_policy FROM refs r
+            JOIN reference_features f USING(reference_id) {join} ORDER BY r.person_id,r.reference_id LIMIT 49""",
+            (version,) if version else (),
+        ).fetchall()
+        return jsonify(
+            versions=versions,
+            active_version=versions[0]["version"] if versions else None,
+            references=[c.public_ref(r) for r in refs[:48]],
+            truncated=len(refs) > 48,
+        )
+
+
+def check_version(db, version):
+    if (
+        version is not None
+        and not db.execute(
+            "SELECT 1 FROM versions WHERE version=?", (version,)
+        ).fetchone()
+    ):
+        abort(404)
+
+
+def scope(db):
+    raw = request.args.get("version")
+    version = int(raw) if raw else None
+    check_version(db, version)
+    return version or 0
+
+
+@bp.get("/versions")
+def version_list():
+    with c.connect() as db:
+        rows = browse.versions(db, scope(db))
+        return jsonify(
+            versions=rows, active_version=rows[0]["version"] if rows else None
+        )
+
+
+@bp.get("/people")
+def people():
+    with c.connect() as db:
+        return jsonify(
+            browse.people(
+                db,
+                scope(db),
+                request.args.get("q", ""),
+                request.args.get("status", ""),
+                request.args.get("after", ""),
+                int(request.args.get("limit", 24)),
+            )
+        )
+
+
+@bp.get("/people/<person>")
+def person_record(person):
+    with c.connect() as db:
+        return jsonify(
+            browse.references(db, scope(db), person, request.args.get("after", ""))
+        )
+
+
+@bp.get("/references/<ref>/thumbnail")
+def portrait_thumbnail(ref):
+    return image_response(browse.thumbnail(ref))
 
 
 @bp.post("/gallery/reference")
@@ -72,6 +144,7 @@ def image_response(path):
 @bp.get("/references/<ref>/appearances")
 def appearances(ref):
     from .appearances import for_reference
+
     return jsonify(for_reference(ref, request.args.get("version", type=int)))
 
 
@@ -127,6 +200,37 @@ def observation(identifier):
         else None
     )
     return jsonify(data)
+
+
+@bp.post("/observations/<identifier>/compare")
+def compare_saved_pair(identifier):
+    """Recompute one cosine against the eligible reference used for this historical decision."""
+    with c.connect() as db:
+        pair = db.execute(
+            """SELECT i.embedding probe,r.embedding portrait,r.reference_id,d.version,d.threshold,
+          f.model,f.preprocessing FROM indexed i JOIN decisions d USING(detection_id)
+          JOIN membership m ON m.reference_id=d.reference_id AND m.version=d.version
+          JOIN refs r ON r.reference_id=m.reference_id JOIN observation_features f USING(detection_id)
+          JOIN reference_features rf ON rf.reference_id=r.reference_id AND rf.model=f.model
+          AND rf.preprocessing=f.preprocessing WHERE i.detection_id=? AND d.state='matched'
+          AND i.embedding IS NOT NULL AND r.embedding IS NOT NULL""",
+            (identifier,),
+        ).fetchone()
+    if pair is None:
+        abort(409)
+    score = c.dot(pair["probe"], pair["portrait"])
+    return jsonify(
+        detection_id=identifier,
+        reference_id=pair["reference_id"],
+        version=pair["version"],
+        model=pair["model"],
+        preprocessing=pair["preprocessing"],
+        threshold=pair["threshold"],
+        score=score,
+        above_threshold=score >= pair["threshold"],
+        computed_at=time.time(),
+        method="on_demand_pair_cosine",
+    )
 
 
 @bp.get("/observations/<identifier>/thumbnail")
