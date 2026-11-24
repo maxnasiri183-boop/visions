@@ -40,7 +40,9 @@ def gallery(version=None):
         check_version(db, version)
         versions = browse.versions(db, version)
         join = (
-            "JOIN membership m USING(reference_id) WHERE m.version=?" if version else ""
+            "JOIN membership m USING(reference_id) WHERE m.version=?"
+            if version
+            else "WHERE NOT EXISTS(SELECT 1 FROM retired_draft_refs h WHERE h.reference_id=r.reference_id)"
         )
         refs = db.execute(
             f"""SELECT r.*,f.model,f.preprocessing,f.quality_policy FROM refs r
@@ -76,8 +78,19 @@ def scope(db):
 def version_list():
     with c.connect() as db:
         rows = browse.versions(db, scope(db))
+        person = request.args.get("person")
+        historical = (
+            db.execute(
+                "SELECT scope FROM gallery_cards WHERE person_id=? AND filter='' AND scope>0 ORDER BY scope DESC LIMIT 1",
+                (person,),
+            ).fetchone()
+            if person
+            else None
+        )
         return jsonify(
-            versions=rows, active_version=rows[0]["version"] if rows else None
+            versions=rows,
+            active_version=rows[0]["version"] if rows else None,
+            person_version=historical[0] if historical else None,
         )
 
 
@@ -123,15 +136,28 @@ def reference():
 
 @bp.post("/gallery/publish")
 def publish():
-    # Reuse a calibration only for the identical eligible membership.
-    calibration = None
+    # Preserve the frozen policy if the operator republishes unchanged enrollment.
+    with c.connect() as db:
+        previous = db.execute(
+            "SELECT calibration FROM versions ORDER BY version DESC LIMIT 1"
+        ).fetchone()
+        eligible = c.gallery_hash(
+            db.execute("SELECT person_id,sha256 FROM eligible_draft")
+        )
+    candidates = [json.loads(previous[0])] if previous else []
     path = c.ROOT / "research" / "frozen-calibration.json"
     if path.exists():
-        candidate = json.loads(path.read_text())
-        with c.connect() as db:
-            refs = db.execute("SELECT * FROM refs WHERE status='accepted'").fetchall()
-            if c.gallery_hash(refs) == candidate["gallery_hash"]:
-                calibration = candidate
+        candidates.append(json.loads(path.read_text()))
+    calibration = next(
+        (
+            item
+            for item in candidates
+            if item.get("gallery_hash") == eligible
+            and item.get("model") == c.MODEL
+            and item.get("preprocessing") == c.PRE
+        ),
+        None,
+    )
     return jsonify(c.publish(calibration)), 201
 
 

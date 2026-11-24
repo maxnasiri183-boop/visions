@@ -46,3 +46,5 @@ Watch a private source, inspect a face against a versioned reference gallery, or
 ## Portrait-to-video and production-rate demo
 
 Open a real enrollment portrait, follow a matching face into its recording, inspect the frozen decision and SQL evidence, then change the source speed and watch Kafka and SQL rates in Grafana. The [laptop walkthrough and deployment runbook](docs/portrait-replay.md) includes the SSH command, a separate 300,000-person synthetic browsing fixture and release verification.
+
+The active research gallery contains 28 enrolled people from VidTIMIT. The private import adds 102 independently recorded studio clips. The [corpus and evaluation report](docs/vidtimit43.md) lists download and publication commands, the frozen threshold, and held-out results including false identifications.

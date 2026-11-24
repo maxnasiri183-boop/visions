@@ -42,15 +42,28 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const status = route.status || "";
-  const query = new URLSearchParams({ r: String(refresh) });
-  if (route.version) query.set("version", route.version);
-  const data = useData<Data>("/api/identity/versions?" + query);
+  const meta = new URLSearchParams({ r: String(refresh) });
+  if (route.version && route.version !== "draft")
+    meta.set("version", route.version);
+  if (route.person) meta.set("person", route.person);
+  const data = useData<Data>("/api/identity/versions?" + meta);
   const versions = data.value?.versions || [];
+  const draft = route.version === "draft" || (fixture && !route.version);
+  const version = draft
+    ? undefined
+    : route.version ||
+      String(data.value?.person_version || data.value?.active_version || "") ||
+      undefined;
+  const scopeReady = draft || !!version || !!data.value;
+  const query = new URLSearchParams({ r: String(refresh) });
+  if (version) query.set("version", version);
   const personQuery = new URLSearchParams(query);
   if (route.q) personQuery.set("q", route.q);
   if (status) personQuery.set("status", status);
   if (route.after) personQuery.set("after", route.after);
-  const page = useData<PeoplePage>("/api/identity/people?" + personQuery);
+  const page = useData<PeoplePage>(
+    scopeReady ? "/api/identity/people?" + personQuery : null,
+  );
   const [detailPage, setDetailPage] = useState({ person: "", after: "" });
   const detailQuery = new URLSearchParams(query);
   if (detailPage.person === route.person && detailPage.after)
@@ -59,7 +72,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
     references: Reference[];
     next_cursor: string | null;
   }>(
-    route.person
+    route.person && scopeReady
       ? "/api/identity/people/" +
           encodeURIComponent(route.person) +
           "?" +
@@ -103,8 +116,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
     if (stored?.[0] === listKey) window.scrollTo(0, stored[1]);
   }, [route.person, listKey, page.value]);
   const active = versions.find(
-    (v) =>
-      String(v.version) === String(route.version ?? data.value?.active_version),
+    (v) => String(v.version) === String(version ?? data.value?.active_version),
   );
   useEffect(() => {
     setMessage("");
@@ -184,7 +196,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
             <label>
               نسخهٔ گالری
               <select
-                value={route.version || ""}
+                value={version || "draft"}
                 onChange={(e) =>
                   go({
                     view: "gallery",
@@ -193,7 +205,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
                   })
                 }
               >
-                <option value="">پیش‌نویس و همهٔ تصاویر</option>
+                <option value="draft">پیش‌نویس و همهٔ تصاویر</option>
                 {versions.map((v) => (
                   <option key={v.version} value={v.version}>
                     نسخهٔ {fa(Number(v.version))} · {date(v.created_at)}
@@ -381,10 +393,20 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
               )}
               {personRefs.map((r) => (
                 <figure key={r.reference_id}>
-                  <img
-                    src={r.portrait_url}
-                    alt={"عکس ثبت‌نام " + nameFa(r.display_name)}
-                  />
+                  <a
+                    href={r.portrait_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={
+                      "باز کردن عکس مرجع در اندازهٔ اصلی · " +
+                      nameFa(r.display_name)
+                    }
+                  >
+                    <img
+                      src={r.portrait_url}
+                      alt={"عکس ثبت‌نام " + nameFa(r.display_name)}
+                    />
+                  </a>
                   <figcaption>
                     عکس ثبت‌نام ·{" "}
                     {r.status === "accepted" ? "پذیرفته‌شده" : "ردشده"}
@@ -396,7 +418,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
                   {!fixture && r.status === "accepted" && (
                     <ReferenceAppearances
                       reference={r.reference_id}
-                      version={route.version}
+                      version={version}
                       go={go}
                     />
                   )}

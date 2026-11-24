@@ -31,3 +31,9 @@ Each deliberate airing has a fresh occurrence ID unique to the durable run, sour
 The private dataset import, operating points, throughput reconciliation and engineering scale procedures each have a separate runbook. [Dataset import and quality](vidtimit43.md) · [Throughput](throughput.md) · [Gallery load test](gallery-scale.md) · [Larger real datasets](large-gallery-data.md)
 
 Before replacing a deployment record its current SHA and retain its Docker images. If the application verification fails after a release, restore the last verified checkout, rebuild the same services against the same private directories and repeat the browser and SQL checks. Persistent volumes must stay mounted throughout recovery.
+
+## Deployment baseline for this milestone
+
+Before implementation the A100 server was running the feature stack through PR #14 at `e936d4f`, while GitHub `main` pointed to `6e014c5`. The retained, fixed two-face recording passed the browser suite on that original deployment. The server is Ubuntu 24.04.2 LTS with one NVIDIA A100-SXM4-40GB (40,960 MiB, driver 595.99.02). Docker reported three running Compose projects. Kafka, object storage, StarRocks, Prometheus and Grafana used existing Docker volumes. Feed and recognition checkpoints, media and references used the private operator bind mount. The 145 GiB filesystem initially had 76 GiB available. The unrelated `public-report/` directory was present before the milestone.
+
+The gallery defaults to its active published membership. Use the version selector for an older snapshot or the explicit draft, which also includes rejected enrollments. Historical person links resolve the last version containing that identity. Versioned on-demand comparisons require the original pair of compatible embeddings. All private subject crosswalks and biometric evidence stay outside Git.

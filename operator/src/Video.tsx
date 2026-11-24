@@ -116,7 +116,9 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
         </div>
       </div>
       {list.error && <p role="alert">{list.error}</p>}
-      {rec ? (
+      {rec?.state === "expired" ? (
+        <p className="empty" role="status">مدت نگهداری این ضبط به پایان رسیده است.</p>
+      ) : rec ? (
         <Player
           key={rec.occurrence_id}
           {...{ rec, route, go, follow, keep, freeze }}
