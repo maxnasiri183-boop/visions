@@ -219,6 +219,13 @@ def frames(occ):
                 "SELECT media_pts_s FROM frames WHERE occurrence_id=? AND frame_index=?",
                 (occ, target),
             )["media_pts_s"]
+        elif request.args.get("live") == "1":
+            # Read the committed tail in source time, including variable-rate recordings.
+            latest = db.execute(
+                "SELECT media_pts_s FROM frames WHERE occurrence_id=? ORDER BY frame_index DESC LIMIT 1",
+                (occ,),
+            ).fetchone()
+            at = max(0, latest[0] - 2) if latest else 0
         start = db.execute(
             """SELECT frame_index FROM frames WHERE occurrence_id=? AND media_pts_s<=?
                                ORDER BY frame_index DESC LIMIT 1""",

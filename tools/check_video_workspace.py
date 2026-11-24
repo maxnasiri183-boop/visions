@@ -407,6 +407,51 @@ async def faults(page, base, known, unknown, out):
     await decision(page, known)
 
 
+async def live_tail_case(context, base, known):
+    """Hold and advance a committed frame window, using only recorded source frames."""
+    page = await context.new_page()
+    path = "/api/operator/recordings/" + known["occurrence_id"]
+    rec = (await (await page.request.get(base + path)).json()) | {
+        "state": "processing",
+        "finished_at": None,
+    }
+    frames = (await (await page.request.get(base + path + "/frames?frame=0")).json())[
+        "items"
+    ]
+    source = rec["source_id"]
+    count = 12
+
+    async def listing(route):
+        await route.fulfill(json={"items": [rec], "sources": [source]})
+
+    async def recording(route):
+        await route.fulfill(json=rec)
+
+    async def tail(route):
+        await route.fulfill(json={"at": 0, "items": frames[:count]})
+
+    try:
+        await page.route("**/api/operator/recordings?source=" + source, listing)
+        await page.route("**" + path, recording)
+        await page.route("**" + path + "/frames?live=1", tail)
+        await page.goto(base + "/?view=live&source=" + source)
+        for limit in (12, 24):
+            count = limit
+            last = frames[count - 1]
+            await page.wait_for_function(
+                """pts => {const v=document.querySelector('.stage video');
+                 return v?.paused && !v.seeking && Math.abs(v.currentTime-pts)<0.004}""",
+                arg=last["media_pts_s"],
+            )
+            actual = await page.locator(".overlay .box").evaluate_all(
+                "boxes=>boxes.map(b=>b.dataset.detectionId).sort()"
+            )
+            assert actual == sorted(f["detection_id"] for f in last["faces"])
+        return {"stalled_and_resumed": True, "last_pts": last["media_pts_s"]}
+    finally:
+        await page.close()
+
+
 async def geometry_case(page, base, known, unknown, out, report):
     for width, height in VIEWPORTS:
         await page.set_viewport_size(dict(width=width, height=height))
@@ -669,6 +714,7 @@ async def run(args):
         page = await context.new_page()
         page.on("pageerror", lambda e: errors.append(str(e)))
         await faults(page, args.url, known, unknown, out)
+        report["controlled_live_tail"] = await live_tail_case(context, args.url, known)
         await geometry_case(page, args.url, known, unknown, out, report)
         report["uploaded_probe"] = await photo_case(page, args.url, root, out, known)
         assert not errors, errors
