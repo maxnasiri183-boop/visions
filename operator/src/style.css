@@ -350,6 +350,7 @@ dialog {
 }
 .video-column {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .player {
@@ -739,6 +740,8 @@ dialog {
   margin-block: 16px;
 }
 .appearances {
+  min-inline-size: 0;
+  max-inline-size: 100%;
   padding: 12px 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -750,6 +753,8 @@ dialog {
   margin-block-end: 8px;
 }
 .track-scroll {
+  min-inline-size: 0;
+  max-inline-size: 100%;
   display: flex;
   gap: 8px;
   overflow-x: auto;
