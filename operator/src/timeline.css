@@ -1,0 +1,162 @@
+.vt-timeline {
+  --vt-height: clamp(36px, 4vw, 56px);
+  container-type: inline-size;
+  direction: ltr;
+  min-width: 0;
+  padding: 0;
+  width: 100%;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.vt-ruler {
+  position: relative;
+  height: 26px;
+  border-bottom: 1px solid var(--border-default);
+  background-image:
+    linear-gradient(90deg, var(--border-default) 1px, transparent 1px),
+    linear-gradient(90deg, var(--text-muted) 1px, transparent 1px);
+  background-position: bottom left;
+  background-repeat: repeat-x;
+}
+.vt-ruler span {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  line-height: 15px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.vt-ruler span:first-child {
+  transform: none;
+}
+.vt-ruler span:last-child {
+  transform: translateX(-100%);
+}
+.vt-track {
+  position: relative;
+  border-radius: 3px;
+  background: var(--bg-app);
+}
+.vt-film {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 1px;
+  overflow: hidden;
+  height: var(--vt-height);
+  background: var(--bg-app);
+  border-inline: 1px solid var(--border-default);
+  user-select: none;
+  pointer-events: none;
+}
+.vt-film img {
+  display: block;
+  width: 100%;
+  height: var(--vt-height);
+  object-fit: cover;
+  background: var(--bg-surface);
+}
+.vt-fallback {
+  display: grid;
+  place-content: center;
+  font-size: 11px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+.vt-seek {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 auto;
+  display: block;
+  width: 100%;
+  height: var(--vt-height);
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  opacity: 0;
+  cursor: crosshair;
+}
+.vt-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 0;
+  height: 100%;
+}
+.vt-seek::-moz-range-thumb {
+  width: 0;
+  border: 0;
+}
+.vt-track:has(.vt-seek:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.vt-events {
+  position: relative;
+  height: 20px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+}
+.vt-events button {
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 100%;
+  transform: translateX(-50%);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.vt-events button::before {
+  content: "";
+  display: block;
+  width: 3px;
+  height: 7px;
+  margin: auto;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+.vt-events button:hover:enabled,
+.vt-events button:focus-visible {
+  background: var(--bg-hover);
+  outline: none;
+}
+.vt-events button:hover:enabled::before,
+.vt-events button:focus-visible::before {
+  background: var(--accent);
+}
+.vt-playhead {
+  position: absolute;
+  z-index: 2;
+  top: -4px;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px #1212197a;
+  pointer-events: none;
+}
+.vt-playhead::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -1px;
+  width: 6px;
+  height: 4px;
+  border-radius: 1px 1px 2px 2px;
+  background: inherit;
+}
+@container (max-width: 490px) {
+  .vt-film img:not(:nth-child(3n + 2)) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt-timeline *,
+  .vt-timeline *::before {
+    transition: none;
+    animation: none;
+  }
+}

@@ -1,17 +1,25 @@
-import { nameFa } from "./Gallery";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FaceOverlay } from "./FaceOverlay";
 import {
-  api,
-  date,
-  Decision,
-  Face,
-  fa,
-  Frame,
-  Link,
-  pts,
-  Recording,
-  Route,
-} from "./types";
+  ArrowRight,
+  Camera,
+  ChevronDown,
+  Clapperboard,
+  Film,
+  ListVideo,
+  Maximize,
+  Minimize,
+  Pause,
+  Play,
+  ScanFace,
+  SkipBack,
+  SkipForward,
+} from "lucide-react";
+import { Evidence, Inspector } from "./Inspector";
+import { AppearanceTrack } from "./AppearanceTrack";
+import { Timeline } from "./Timeline";
+import { useMedia } from "./hooks";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { date, Face, fa, Frame, Link, pts, Recording, Route } from "./types";
 import { useData } from "./hooks";
 
 export function VideoPage({ route, go }: { route: Route; go: Link }) {
@@ -44,6 +52,7 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
   const freeze = (f: Frame, face?: Face) => {
     keep();
     go({
+      ...route,
       view: route.view,
       occ: id,
       frame: f.frame_index,
@@ -53,31 +62,57 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
   return (
     <>
       <div className="page-head">
-        <div>
-          <h1>{live ? "پخش زنده" : "ویدیوها"}</h1>
-          <p>
-            {live
-              ? "آخرین تصاویر پردازش‌شدهٔ منابع خصوصی"
-              : "بازبینی تصویر و شواهد هر مشاهده"}
-          </p>
+        <div className="page-title">
+          <span className="heading-icon">
+            {live ? <Camera /> : <Clapperboard />}
+          </span>
+          <div>
+            <h1>{live ? "پخش زنده" : "بازبینی ویدئو"}</h1>
+            {rec && (
+              <p>
+                <bdi>{rec.asset_id}</bdi>
+                <span className="separator">/</span>
+                <bdi>{rec.source_id}</bdi>
+              </p>
+            )}
+          </div>
         </div>
-        <label>
-          منبع
-          <select
-            value={source}
-            onChange={(e) => {
-              go({ view: route.view });
-              setSource(e.target.value);
-              setChosen("");
-              setFollow(live);
-            }}
-          >
-            <option value="">همهٔ منابع</option>
-            {list.value?.sources.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </label>
+        <div className="row">
+          {route.originOcc && (
+            <button
+              className="return-moment"
+              onClick={() =>
+                go({
+                  view: route.originView || "recordings",
+                  occ: route.originOcc,
+                  frame: route.originFrame,
+                  face: route.originFace,
+                })
+              }
+            >
+              <ArrowRight />
+              بازگشت به لحظه قبلی
+            </button>
+          )}
+          <label className="inline-filter">
+            <Camera />
+            <span className="sr">منبع</span>
+            <select
+              value={source}
+              onChange={(e) => {
+                go({ view: route.view });
+                setSource(e.target.value);
+                setChosen("");
+                setFollow(live);
+              }}
+            >
+              <option value="">همهٔ منابع</option>
+              {list.value?.sources.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
       {list.error && <p role="alert">{list.error}</p>}
       {rec ? (
@@ -112,8 +147,12 @@ function Archive({ source, go }: { source: string; go: Link }) {
   );
   const rows = list.value?.items || [];
   return (
-    <section className="card archive">
-      <h2>فهرست پخش‌های ثبت‌شده</h2>
+    <details className="card archive record-archive">
+      <summary>
+        <ListVideo />
+        بایگانی ویدئوها
+        <ChevronDown />
+      </summary>
       <div className="scroll-list">
         {rows.map((r) => (
           <button
@@ -139,7 +178,7 @@ function Archive({ source, go }: { source: string; go: Link }) {
         )}
         {before && <button onClick={() => setBefore("")}>جدیدترین</button>}
       </div>
-    </section>
+    </details>
   );
 }
 
@@ -242,318 +281,295 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
       if (ticket) video.cancelVideoFrameCallback(ticket);
     };
   }, []);
+  const mobile = useMedia("(max-width: 760px)");
+  const [dismissed, setDismissed] = useState<string>(),
+    [appearance, setAppearance] = useState<string>(),
+    [speed, setSpeed] = useState(1),
+    [full, setFull] = useState(false);
+  const appearanceSection = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const changed = () => setFull(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", changed);
+    return () => document.removeEventListener("fullscreenchange", changed);
+  }, []);
+  useEffect(() => {
+    if (appearance && face?.detection_id === appearance && mobile)
+      appearanceSection.current?.scrollIntoView({ block: "nearest" });
+  }, [appearance, mobile, face?.detection_id]);
   const choose = (p: Face) => {
     if (f) {
       v.current!.pause();
+      setDismissed(undefined);
+      setAppearance(undefined);
       freeze(f, p);
     }
   };
-  const step = async (delta: number) => {
+  const seekHere = (pos: number) => {
+    keep();
+    v.current?.pause();
+    seek(pos);
+    setAppearance(undefined);
+  };
+  const step = (delta: number) => {
     keep();
     v.current?.pause();
     const index = Math.min(
       rec.last_frame,
       Math.max(0, (f?.frame_index ?? 0) + delta),
     );
-    try {
-      const batch = await api<{ at: number; items: Frame[] }>(
-        path + "/frames?frame=" + index,
-      );
-      setLoaded(batch.items);
-      seek(batch.at + 0.00001);
-    } catch {
-      setMediaError("این فریم در دسترس نیست.");
-    }
+    go({ ...route, occ: rec.occurrence_id, frame: index, face: undefined });
   };
-  const age = Math.max(
-    0,
-    Date.now() / 1000 - Date.parse(f?.ingested_at || "") / 1000,
-  );
+  const picker =
+    f && f.faces.length > 0 ? (
+      <div className="face-list" aria-label="چهره‌های این فریم">
+        {f.faces.map((p, i) => (
+          <button
+            key={p.detection_id}
+            aria-pressed={p === face}
+            onClick={() => choose(p)}
+          >
+            چهرهٔ {fa(i + 1)}
+          </button>
+        ))}
+      </div>
+    ) : null;
+  const message = !f
+    ? rec.state === "failed" || rec.state === "retry"
+      ? "خطا در پردازش فریم"
+      : "در انتظار نتیجهٔ این فریم"
+    : !f.faces.length
+      ? "این فریم پردازش شد؛ چهره‌ای در تصویر نبود."
+      : "برای دیدن نتیجه، یکی از چهره‌های تصویر را انتخاب کنید.";
+  const trackOpen = Boolean(face && face.detection_id === appearance);
+  const mobileClosed = mobile && face && dismissed === face.detection_id;
+  const age = f
+    ? Math.max(0, Date.now() / 1000 - Date.parse(f.ingested_at) / 1000)
+    : null;
   return (
     <div className="review-grid">
-      <section className="card player">
-        <header className="bar">
-          <div className="title-row">
-            <span className={"dot " + (follow ? "green" : "")} />
-            <h2>
-              <bdi>{rec.source_id}</bdi>
-            </h2>
-          </div>
-          <span>
-            {rec.cycle > 0 ? "بازپخش محتوای تکراری" : "پخش ثبت‌شده"}
-            {rec.synthetic ? " · ترکیبی / آزمایشی" : ""}
-          </span>
-        </header>
-        <div className="stage" ref={stage}>
-          <video
-            ref={v}
-            muted
-            playsInline
-            preload="auto"
-            src={path + "/media"}
-            onLoadedMetadata={() => setReady(true)}
-            onSeeked={() => setClock(v.current?.currentTime || 0)}
-            onTimeUpdate={() => {
-              if (
-                v.current &&
-                typeof v.current.requestVideoFrameCallback !== "function"
-              )
-                setClock(v.current.currentTime);
-            }}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onError={() =>
-              setMediaError(
-                "ویدیو قابل پخش نیست یا مدت نگهداری آن به پایان رسیده است.",
-              )
-            }
-          />
-          <div className="overlay" style={fitted}>
-            {f?.faces.map((p, i) => (
-              <button
-                key={p.detection_id}
-                className={"box " + (p === face ? "active" : "")}
-                style={{
-                  left: (p.box[0] / f.width) * 100 + "%",
-                  top: (p.box[1] / f.height) * 100 + "%",
-                  width: (p.box[2] / f.width) * 100 + "%",
-                  height: (p.box[3] / f.height) * 100 + "%",
-                }}
-                aria-label={"انتخاب چهرهٔ " + fa(i + 1)}
-                onClick={() => choose(p)}
-              >
-                <span>{fa(i + 1)}</span>
-              </button>
-            ))}
-          </div>
-          {mediaError && (
-            <div role="alert" className="video-error">
-              {mediaError}
+      <section className="video-column" aria-label="پخش و خط زمان">
+        <div className="player card">
+          <div className="stage" ref={stage} dir="ltr">
+            <video
+              ref={v}
+              muted
+              playsInline
+              preload="auto"
+              src={path + "/media"}
+              onLoadedMetadata={() => setReady(true)}
+              onSeeked={() => setClock(v.current?.currentTime || 0)}
+              onTimeUpdate={() => {
+                if (
+                  v.current &&
+                  typeof v.current.requestVideoFrameCallback !== "function"
+                )
+                  setClock(v.current.currentTime);
+              }}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onError={() =>
+                setMediaError(
+                  "ویدیو قابل پخش نیست یا مدت نگهداری آن به پایان رسیده است.",
+                )
+              }
+            />
+            <div className="video-badges" dir="rtl">
+              <span>
+                <Camera />
+                <bdi>{rec.source_id}</bdi>
+              </span>
+              <span>
+                <i className={follow ? "dot green" : "dot"} />
+                {follow
+                  ? age !== null && age > 10
+                    ? "تصویر قدیمی"
+                    : "پخش زنده"
+                  : "ضبط‌شده"}
+              </span>
             </div>
-          )}
+            <FaceOverlay
+              frame={f}
+              selected={face?.detection_id}
+              fitted={fitted}
+              onChoose={choose}
+            />
+            {mediaError && (
+              <div className="video-error" role="alert">
+                {mediaError}
+              </div>
+            )}
+            <div className="player-controls">
+              <input
+                type="range"
+                dir="ltr"
+                aria-label="زمان پخش"
+                min="0"
+                max={rec.duration_s}
+                step=".001"
+                value={clock}
+                style={
+                  {
+                    "--progress":
+                      Math.min(100, (100 * clock) / rec.duration_s) + "%",
+                  } as React.CSSProperties
+                }
+                onChange={(e) => seekHere(+e.target.value)}
+              />
+              <div className="transport" dir="ltr">
+                <button
+                  className="icon-only"
+                  aria-label={playing ? "توقف" : "پخش"}
+                  title={playing ? "توقف" : "پخش"}
+                  onClick={() => {
+                    keep();
+                    if (playing) v.current?.pause();
+                    else
+                      void v.current
+                        ?.play()
+                        .catch(() => setMediaError("پخش انجام نشد."));
+                  }}
+                >
+                  {playing ? <Pause /> : <Play />}
+                </button>
+                <button
+                  className="icon-only"
+                  aria-label="فریم قبلی"
+                  title="فریم قبلی"
+                  onClick={() => step(-1)}
+                >
+                  <SkipBack />
+                </button>
+                <button
+                  className="icon-only"
+                  aria-label="فریم بعدی"
+                  title="فریم بعدی"
+                  onClick={() => step(1)}
+                >
+                  <SkipForward />
+                </button>
+                <bdi className="clock">
+                  {pts(clock)} <span>/ {pts(rec.duration_s)}</span>
+                </bdi>
+                <select
+                  className="speed"
+                  value={speed}
+                  aria-label="سرعت پخش"
+                  title="سرعت پخش"
+                  onChange={(e) => {
+                    keep();
+                    setSpeed(+e.target.value);
+                    if (v.current) v.current.playbackRate = +e.target.value;
+                  }}
+                >
+                  {[0.5, 1, 1.5, 2].map((n) => (
+                    <option value={n} key={n}>
+                      {n}×
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="icon-only"
+                  aria-label="تمام‌صفحه"
+                  title="تمام‌صفحه"
+                  onClick={() => {
+                    const req = document.fullscreenElement
+                      ? document.exitFullscreen()
+                      : stage.current?.requestFullscreen();
+                    void req?.catch(() =>
+                      setMediaError("تمام‌صفحه در این مرورگر در دسترس نیست."),
+                    );
+                  }}
+                >
+                  {full ? <Minimize /> : <Maximize />}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="transport">
-          <button
-            onClick={() => {
-              keep();
-              if (playing) v.current?.pause();
-              else
-                void v.current
-                  ?.play()
-                  .catch(() => setMediaError("پخش ویدیو انجام نشد."));
-            }}
-          >
-            {playing ? "توقف" : "پخش"}
-          </button>
-          <input
-            type="range"
-            dir="ltr"
-            min="0"
-            max={rec.duration_s}
-            step=".001"
-            value={clock}
-            aria-label="زمان پخش"
-            onChange={(e) => {
-              keep();
-              v.current?.pause();
-              seek(Number(e.target.value));
-            }}
-          />
-          <bdi>
-            {pts(clock)} / {pts(rec.duration_s)}
-          </bdi>
-        </div>
-        <div className="row controls">
-          <button onClick={() => void step(-1)}>فریم قبلی</button>
-          <button onClick={() => void step(1)}>فریم بعدی</button>
-          <button
-            onClick={() => {
-              if (document.fullscreenElement) void document.exitFullscreen();
-              else void stage.current?.requestFullscreen();
-            }}
-          >
-            تمام‌صفحه
-          </button>
+        <Timeline
+          mediaUrl={path + "/media"}
+          duration={rec.duration_s}
+          clock={clock}
+          frames={loaded}
+          onSeek={seekHere}
+        />
+        {trackOpen && face && f && (
+          <div ref={appearanceSection}>
+            <AppearanceTrack
+              key={face.detection_id}
+              id={face.detection_id}
+              occ={rec.occurrence_id}
+              assetId={rec.asset_id}
+              onOpen={(hit) =>
+                go({
+                  view: "recordings",
+                  occ: hit.occurrence_id,
+                  frame: hit.frame_index,
+                  face: hit.detection_id,
+                  originView:
+                    route.originView ||
+                    (route.view === "live" ? "live" : "recordings"),
+                  originOcc: route.originOcc || rec.occurrence_id,
+                  originFrame: route.originFrame ?? f.frame_index,
+                  originFace: route.originFace || face.detection_id,
+                })
+              }
+            />
+          </div>
+        )}
+        <div className="source-strip">
+          <span>
+            <Film />
+            <bdi>{rec.asset_id}</bdi>
+          </span>
+          <span>
+            فریم <bdi>{f ? fa(f.frame_index) : "—"}</bdi>
+          </span>
+          {f && <bdi dir="ltr">{date(f.ingested_at)}</bdi>}
+          {rec.synthetic === 1 && <span>ترکیبی / آزمایشی</span>}
+          {rec.cycle > 0 && <span>بازپخش</span>}
+          {follow && age !== null && <span>{fa(age)} ثانیه پیش</span>}
           {!follow && route.view === "live" && (
             <button onClick={onLive}>رفتن به پخش زنده</button>
           )}
         </div>
-        <div className="strip">
-          <span>فریم {f ? fa(f.frame_index) : "—"}</span>
-          <span>{f ? date(f.ingested_at) : "زمان ثبت نامشخص"}</span>
-          {follow && Number.isFinite(age) && (
-            <span>تصویر {fa(age)} ثانیه پیش</span>
-          )}
-        </div>
       </section>
-      <aside className="card inspector">
-        <div className="bar">
-          <h2>بررسی مشاهده</h2>
-          {f && <span>{fa(f.faces.length)} چهره</span>}
-        </div>
-        {f?.faces.length ? (
-          <>
-            <div className="face-list">
-              {f.faces.map((p, i) => (
-                <button
-                  key={p.detection_id}
-                  aria-pressed={p === face}
-                  onClick={() => choose(p)}
-                >
-                  چهرهٔ {fa(i + 1)}
-                </button>
-              ))}
-            </div>
-            {face ? (
-              <Inspect key={face.detection_id} {...{ face, f, go }} />
-            ) : (
-              <p className="empty">
-                برای دیدن نتیجه، یکی از چهره‌های تصویر را انتخاب کنید.
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="empty">
-            {!f
-              ? rec.state === "failed"
-                ? "خطا در پردازش فریم"
-                : "در انتظار نتیجهٔ این فریم"
-              : "این فریم پردازش شد؛ چهره‌ای در تصویر نبود."}
-          </p>
-        )}
-      </aside>
-    </div>
-  );
-}
-const titles: Record<string, string> = {
-  pending: "در انتظار شناسایی",
-  poor_quality: "کیفیت تصویر کافی نیست",
-  error: "خطای فنی در شناسایی",
-  unknown: "ناشناخته",
-  matched: "هویت پیشنهادی",
-};
-function Inspect({ face, f, go }: { face: Face; f: Frame; go: Link }) {
-  const [technical, setTechnical] = useState(false),
-    [done, setDone] = useState(false);
-  const d = useData<Decision>(
-    "/api/identity/observations/" + face.detection_id,
-    done ? 0 : 1200,
-  );
-  useEffect(() => {
-    if (d.value && d.value.state !== "pending") setDone(true);
-  }, [d.value]);
-  const result = d.value;
-  const [copied, setCopied] = useState(false);
-  const details = useData<{ event: object; sql: object | null }>(
-    technical ? "/api/operator/details/" + face.detection_id : null,
-  );
-  return (
-    <div className="inside">
-      <h3>
-        {d.error
-          ? "دریافت نتیجه ممکن نیست"
-          : titles[result?.state || "pending"]}
-      </h3>
-      {result?.state === "matched" && <h2>{nameFa(result.display_name)}</h2>}
-      <div className="pair">
-        <figure>
-          <img
-            src={"/api/operator/crops/" + face.detection_id}
-            alt="برش واقعی چهره"
-          />
-          <figcaption>چهرهٔ مشاهده‌شده</figcaption>
-        </figure>
-        <figure>
-          {result?.portrait_url ? (
-            <img
-              src={result.face_url || result.portrait_url}
-              alt="نزدیک‌ترین تصویر مرجع واجد شرایط"
-            />
-          ) : (
-            <div className="portrait-empty">تصویر مرجع موجود نیست</div>
-          )}
-          <figcaption>نزدیک‌ترین تصویر مرجع</figcaption>
-        </figure>
-      </div>
-      <dl>
-        <div>
-          <dt>زمان مشاهده</dt>
-          <dd>{date(f.ingested_at)}</dd>
-        </div>
-        <div>
-          <dt>امتیاز شباهت</dt>
-          <dd>{result?.score != null ? fa(result.score, 3) : "—"}</dd>
-        </div>
-        <div>
-          <dt>آستانهٔ تصمیم</dt>
-          <dd>{result?.threshold != null ? fa(result.threshold, 3) : "—"}</dd>
-        </div>
-      </dl>
-      {(result?.person_id || result?.candidate_person_id) && (
-        <button
-          onClick={() =>
-            go({
-              view: "gallery",
-              person: result.person_id || result.candidate_person_id,
-              version: String(result.version),
-            })
-          }
-        >
-          {result.person_id ? "پروندهٔ مرجع" : "پروندهٔ نزدیک‌ترین مرجع"} ←
-        </button>
-      )}
-      <details onToggle={(e) => setTechnical(e.currentTarget.open)}>
-        <summary>جزئیات فنی</summary>
-        <p>شناسهٔ مشاهده</p>
-        <code>{face.detection_id}</code>
-        <div className="row">
-          <button
-            onClick={() => {
-              void navigator.clipboard
-                .writeText(face.detection_id)
-                .then(() => setCopied(true))
-                .catch(() => setCopied(false));
+      <Inspector
+        mobile={mobile}
+        selected={mobileClosed ? undefined : face?.detection_id}
+        count={f?.faces.length || 0}
+        onDismiss={() => {
+          setDismissed(face?.detection_id);
+          requestAnimationFrame(() =>
+            stage.current
+              ?.querySelector<HTMLButtonElement>(".box.active")
+              ?.focus({ preventScroll: true }),
+          );
+        }}
+      >
+        {(!mobile || (!mobileClosed && face)) && picker}
+        {mobileClosed ? (
+          <button onClick={() => setDismissed(undefined)}>شناسایی چهره</button>
+        ) : face && f ? (
+          <Evidence
+            key={face.detection_id}
+            face={face}
+            frame={f}
+            rec={rec}
+            go={go}
+            appearancesOpen={trackOpen}
+            onAppearances={() => {
+              setAppearance(trackOpen ? undefined : face.detection_id);
+              if (mobile) setDismissed(face.detection_id);
             }}
-          >
-            {copied ? "کپی شد" : "کپی شناسه"}
-          </button>
-          <a
-            href={"/api/operator/original/" + face.detection_id + ".png"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            باز کردن فریم اصلی
-          </a>
-        </div>
-        <p>
-          زمان تا مشاهده در پایگاه داده{" "}
-          {face.sql_visible_at == null
-            ? "در انتظار"
-            : fa(
-                Math.max(
-                  0,
-                  1000 * face.sql_visible_at - Date.parse(f.ingested_at),
-                ),
-              ) + " میلی‌ثانیه"}
-        </p>
-        <p>
-          موضوع کافکا <bdi>{face.topic}</bdi> · آخرین موقعیت{" "}
-          <bdi>{face.latest_offset}</bdi>
-        </p>
-        <p>
-          نسخهٔ گالری <bdi>{result?.version || "—"}</bdi>
-        </p>
-        <p>اطمینان تشخیص چهره {fa(face.confidence, 4)}</p>
-        <p>
-          موقعیت کافکا{" "}
-          <bdi>
-            {face.partition_id} / {face.kafka_offset}
-          </bdi>
-        </p>
-        {technical && (
-          <pre dir="ltr">{JSON.stringify(details.value ?? {}, null, 2)}</pre>
+          />
+        ) : (
+          <div className="inspector-empty">
+            {!mobile && <ScanFace />}
+            <p>{message}</p>
+          </div>
         )}
-      </details>
+      </Inspector>
     </div>
   );
 }

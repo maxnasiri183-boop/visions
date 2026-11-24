@@ -6,6 +6,10 @@ export type Route = {
   face?: string;
   person?: string;
   version?: string;
+  originOcc?: string;
+  originFrame?: number;
+  originFace?: string;
+  originView?: "live" | "recordings";
 };
 export type Link = (patch: Route) => void;
 export type Recording = {
@@ -115,10 +119,11 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   }
   return response.json();
 }
-export function post<T>(url: string, data: unknown) {
+export function post<T>(url: string, data: unknown, signal?: AbortSignal) {
   return api<T>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    signal,
   });
 }
