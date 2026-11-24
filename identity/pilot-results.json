@@ -1,0 +1,103 @@
+{
+  "measured_utc": "2026-11-24T02:29:28.507773+00:00",
+  "gallery_version": 2,
+  "threshold": 0.799078106880188,
+  "search_threshold": 0.374331461025238,
+  "identification": {
+    "gallery_people": 3,
+    "correct_identifications": 1,
+    "enrolled_probes": 1,
+    "correct_rate": 1.0,
+    "correct_rate_ci95": [
+      0.024999999999999953,
+      1
+    ],
+    "false_identifications": 0,
+    "independent_unenrolled_probes": 3,
+    "fpir": 0.0,
+    "fpir_ci95": [
+      0,
+      0.7075982261787133
+    ],
+    "interval_method": "Clopper-Pearson, two-sided 95%",
+    "target_fpir": 0.001,
+    "target_gallery": 1000,
+    "target_verified": false
+  },
+  "retrieval": {
+    "1": {
+      "precision_at_k": 1.0,
+      "recall_at_k": 0.3333333333333333,
+      "precision_returned": 1.0
+    },
+    "5": {
+      "precision_at_k": 0.6,
+      "recall_at_k": 1.0,
+      "precision_returned": 1.0
+    },
+    "10": {
+      "precision_at_k": 0.3,
+      "recall_at_k": 1.0,
+      "precision_returned": 1.0
+    }
+  },
+  "present_probes": 2,
+  "absent_probes": 2,
+  "absent_returning_any": 0,
+  "coverage": {
+    "frames": 836,
+    "labeled_multiface_frames": 50,
+    "both_faces_detected_frames": 50,
+    "labeled_small_frames": 16,
+    "small_frames_with_detection": 16,
+    "labeled_blur_frames": 16,
+    "blur_frames_with_detection": 9,
+    "labeled_dim_frames": 16,
+    "dim_frames_with_detection": 16,
+    "labeled_empty_frames": 8,
+    "empty_frames_with_false_detections": 0,
+    "pose_proxy_observations": 231
+  },
+  "condition_observation_counts": {
+    "nonfrontal_proxy": {
+      "observations": 231,
+      "ready": 210,
+      "enrolled_observations": 134,
+      "correct_ids": 4,
+      "unenrolled_observations": 97,
+      "false_ids": 0,
+      "poor_quality": 21
+    },
+    "multiple_faces": {
+      "observations": 100,
+      "ready": 96,
+      "unenrolled_observations": 50,
+      "false_ids": 0,
+      "enrolled_observations": 50,
+      "correct_ids": 24,
+      "poor_quality": 4
+    },
+    "small": {
+      "observations": 16,
+      "ready": 10,
+      "enrolled_observations": 16,
+      "correct_ids": 4,
+      "poor_quality": 6
+    },
+    "blur": {
+      "observations": 9,
+      "poor_quality": 9,
+      "enrolled_observations": 9,
+      "correct_ids": 0
+    },
+    "dim": {
+      "observations": 16,
+      "poor_quality": 16,
+      "enrolled_observations": 16,
+      "correct_ids": 0
+    }
+  },
+  "searchable_observations": 834,
+  "search_corpus_occurrences": 18,
+  "indexed_observations": 871
+}

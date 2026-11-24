@@ -1,0 +1,1299 @@
+{
+  "title": "Operator feed and search",
+  "uid": "visions-operator",
+  "tags": [
+    "visions",
+    "operator"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "timezone": "utc",
+  "editable": false,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "id": 15,
+      "title": "Source online and telemetry freshness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_source_online",
+          "legendFormat": "{{source}} \u00b7 online",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "1 - visions_operator_stale",
+          "legendFormat": "{{source}} \u00b7 recent processed frames",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "up{job=\"operator\"}",
+          "legendFormat": "exporter available",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "1 indicates healthy or fresh. Zero indicates an outage or stale samples. An absent series means the instrument has no data."
+    },
+    {
+      "type": "timeseries",
+      "id": 1,
+      "title": "Playout target and measured throughput \u00b7 5 s",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_target_fps",
+          "legendFormat": "{{source}} \u00b7 playout target",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_decoded_fps",
+          "legendFormat": "{{source}} \u00b7 decoded",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "visions_operator_inference_fps",
+          "legendFormat": "{{source}} \u00b7 inference",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "visions_operator_processed_fps",
+          "legendFormat": "{{source}} \u00b7 processed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "The catalog specifies the file rate. Decoded FPS measures distinct frame admissions. Inference FPS counts actual forwards."
+    },
+    {
+      "type": "timeseries",
+      "id": 3,
+      "title": "Ingress to SQL and searchable index \u00b7 5 min",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_stage_seconds{stage=~\"sql_visibility|search_visibility\"}",
+          "legendFormat": "{{stage}} {{quantile}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Wall time from decoded observation to independently observed visibility. Rolling 5-minute p50/p95. Sample counts appear in the next row."
+    },
+    {
+      "type": "timeseries",
+      "id": 2,
+      "title": "Waiting queue and current frame lateness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_waiting_queue_age_seconds",
+          "legendFormat": "{{source}} \u00b7 waiting",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_recent_playout_lateness_seconds",
+          "legendFormat": "{{source}} \u00b7 frame",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 16,
+      "title": "Time since latest checkpoint",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - visions_operator_latest_decoded_at",
+          "legendFormat": "{{source}} \u00b7 decoded",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "time() - visions_operator_latest_processed_at",
+          "legendFormat": "{{source}} \u00b7 processed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "time()-visions_operator_latest_searchable_at",
+          "legendFormat": "searchable",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 17,
+      "title": "Faces observed per second \u00b7 5 s",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_detections_per_second",
+          "legendFormat": "{{source}} \u00b7 detections/s",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 4,
+      "title": "Detection and recognition stages \u00b7 5 min",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_stage_seconds{quantile=\"p95\",stage!~\"sql_visibility|identity_index|search_visibility|playout_lag\"}",
+          "legendFormat": "{{stage}} p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 6,
+      "title": "Samples in stage percentiles \u00b7 5 min",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_stage_samples",
+          "legendFormat": "{{stage}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 5,
+      "title": "Playout lateness \u00b7 5 min",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_stage_seconds{stage=\"playout_lag\"}",
+          "legendFormat": "{{quantile}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 18,
+      "title": "Completed frame accounting",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_completed_expected_frames",
+          "legendFormat": "{{source}} \u00b7 expected",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_completed_missing_frames",
+          "legendFormat": "{{source}} \u00b7 missing",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "visions_operator_intentionally_skipped_frames",
+          "legendFormat": "{{source}} \u00b7 intentionally sampled out",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 7,
+      "title": "SQL observations awaiting first visible row",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_pending_sql",
+          "legendFormat": "Pending observations",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 19,
+      "title": "Recognition and index intervention",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_identity_pending",
+          "legendFormat": "pending",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_identity_errors",
+          "legendFormat": "technical errors",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "visions_operator_identity_quality_rejected",
+          "legendFormat": "quality rejections",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 20,
+      "title": "Routine Load state and availability",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_routine_load_running",
+          "legendFormat": "running",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_routine_load_available",
+          "legendFormat": "state available",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 21,
+      "title": "Routine Load committed offset",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_routine_partition_progress",
+          "legendFormat": "partition {{partition}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 11,
+      "title": "Routine Load offset lag",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_routine_load_lag",
+          "legendFormat": "Kafka records",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 12,
+      "title": "Rejected Routine Load rows",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_routine_load_rejected",
+          "legendFormat": "Rejected",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 13,
+      "title": "GPU activity on host",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_gpu_utilization_percent",
+          "legendFormat": "Device utilization",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 14,
+      "title": "GPU memory in use",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 64,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_gpu_memory_used_mib * 1048576",
+          "legendFormat": "Used VRAM",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 23,
+      "title": "Host CPU activity",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 72,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_host_cpu_percent",
+          "legendFormat": "CPU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 22,
+      "title": "Host memory usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 72,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_host_memory_used_bytes",
+          "legendFormat": "used RAM",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 8,
+      "title": "Available disk headroom",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_disk_free_bytes",
+          "legendFormat": "Free disk",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 25,
+      "title": "Retention and incomplete expired evidence",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 80,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_expired_detections",
+          "legendFormat": "detections expired",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_expired_missing_identity",
+          "legendFormat": "expired without recognition",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "visions_operator_expired_missing_sql",
+          "legendFormat": "expired without SQL",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 9,
+      "title": "Replay and expiry totals",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 88,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{__name__=~\"visions_operator_(replayed_frames|expired)_total\"}",
+          "legendFormat": "{{__name__}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 24,
+      "title": "Container health",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 88,
+        "h": 8,
+        "w": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_container_healthy",
+          "legendFormat": "{{service}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": ""
+    },
+    {
+      "type": "timeseries",
+      "id": 26,
+      "title": "Soak monitor and reserve alarms",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 96,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_soak_open_alerts",
+          "legendFormat": "open soak alerts",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "visions_operator_disk_below_reserve",
+          "legendFormat": "disk below reserve",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Durable observations from the current soak run."
+    },
+    {
+      "type": "timeseries",
+      "id": 27,
+      "title": "Soak observation window",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 96,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_soak_elapsed_seconds",
+          "legendFormat": "elapsed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "time()-visions_operator_soak_sample_at",
+          "legendFormat": "latest sample age",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Durable observations from the current soak run."
+    }
+  ],
+  "links": [
+    {
+      "type": "link",
+      "title": "Inspect Routine Load state, offsets and last error",
+      "url": "http://127.0.0.1:8092/api/operator/routine-load",
+      "targetBlank": true
+    },
+    {
+      "type": "link",
+      "title": "Open operator source health",
+      "url": "http://127.0.0.1:8092/?view=health",
+      "targetBlank": true
+    },
+    {
+      "type": "link",
+      "title": "Open current soak report",
+      "url": "http://127.0.0.1:8092/api/operator/soak",
+      "targetBlank": true
+    }
+  ]
+}

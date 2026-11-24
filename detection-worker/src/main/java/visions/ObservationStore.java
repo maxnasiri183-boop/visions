@@ -33,7 +33,8 @@ final class ObservationStore {
     start = System.nanoTime();
     try {
       client.putObject(r -> r.bucket(bucket).key(key).contentType("application/json")
-              .metadata(Map.of(INGESTED_AT, ingestedAt.toString())).ifNoneMatch("*"),
+              .metadata(Map.of(INGESTED_AT, ingestedAt.toString()))
+              .tagging(System.getenv("DETECTION_RETENTION_TAG")).ifNoneMatch("*"),
           RequestBody.fromBytes(bytes));
       return new Saved(bytes, ingestedAt.toString(), lookupMs + elapsedMs(start));
     } catch (S3Exception conflict) {

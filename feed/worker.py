@@ -263,7 +263,33 @@ def slot(slot_id):
                 recovering = bool(row["attempts"])
                 metrics = {}
                 for line in child.stdout:
-                    if line.startswith("frame_stats="):
+                    if line.startswith("frame_received="):
+                        received = json.loads(line.split("=", 1)[1])
+                        if received["source_id"] != oid:
+                            raise ValueError(
+                                "Received different occurrence from resident detector"
+                            )
+                        now = time.time()
+                        db.execute("BEGIN IMMEDIATE")
+                        db.execute(
+                            "INSERT OR REPLACE INTO source_received VALUES(?,?,?,?,?,?,?,?)",
+                            (
+                                row["source_id"],
+                                row["run_id"],
+                                oid,
+                                received["frame_index"],
+                                received["pts"],
+                                received["ingested_at"],
+                                now,
+                                received["lag_ms"],
+                            ),
+                        )
+                        db.execute(
+                            "INSERT INTO receipts VALUES(?,?,?)",
+                            (oid, received["frame_index"], now),
+                        )
+                        db.commit()
+                    elif line.startswith("frame_stats="):
                         metrics = json.loads(line.split("=", 1)[1])
                     elif line.startswith("frame_event="):
                         if not budget():

@@ -20,12 +20,13 @@ class Decoder:
     def __init__(self):
         self.clips = OrderedDict()
 
-    def frame(self, path, index):
-        key = str(c.checked_path(path))
+    def frame(self, occurrence_id, path, index):
+        retained = str(c.checked_path(path))
+        key = (occurrence_id, retained)
         if key not in self.clips:
             if len(self.clips) == 8:
                 self.clips.popitem(last=False)[1][0].release()
-            cap = cv2.VideoCapture(key, cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 1])
+            cap = cv2.VideoCapture(retained, cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 1])
             self.clips[key] = (cap, -1, None)
         self.clips.move_to_end(key)
         cap, before, image = self.clips[key]
@@ -87,7 +88,7 @@ def process(db, rows, decoder):
         reason, vector = None, None
         timings = {}
         try:
-            img = decoder.frame(row["input_path"], row["frame_index"])
+            img = decoder.frame(row["occurrence_id"], row["input_path"], row["frame_index"])
             if img.shape[:2] != (row["height"], row["width"]):
                 raise ValueError("Observation and source geometry differ")
             face = np.array(

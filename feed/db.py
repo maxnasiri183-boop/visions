@@ -51,6 +51,13 @@ def initialize():
         CREATE INDEX IF NOT EXISTS obs_frame ON observations(occurrence_id,frame_index);
         CREATE INDEX IF NOT EXISTS obs_visible ON observations(sql_visible_at);
         CREATE INDEX IF NOT EXISTS obs_sql ON observations(sql_visible_at) WHERE sql_visible_at IS NULL;
+        CREATE TABLE IF NOT EXISTS source_received(source_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,
+          occurrence_id TEXT NOT NULL,frame_index INTEGER NOT NULL,pts INTEGER NOT NULL,
+          ingested_at TEXT NOT NULL,observed_at REAL NOT NULL,lag_ms REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS receipts(occurrence_id TEXT NOT NULL,frame_index INTEGER NOT NULL,
+          observed_at REAL NOT NULL);
+        CREATE INDEX IF NOT EXISTS receipt_time ON receipts(observed_at);
+        CREATE INDEX IF NOT EXISTS receipt_occ ON receipts(occurrence_id);
         CREATE TABLE IF NOT EXISTS replay_events(
           at REAL NOT NULL, occurrence_id TEXT NOT NULL,frame_index INTEGER NOT NULL,detection_id TEXT,
           old_offset INTEGER,new_offset INTEGER);
@@ -64,6 +71,8 @@ def initialize():
         CREATE TABLE IF NOT EXISTS media_assets(
           checksum TEXT PRIMARY KEY,input_path TEXT NOT NULL,media_path TEXT NOT NULL,
           frame_count INTEGER NOT NULL,duration_s REAL NOT NULL,created_at REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS expiry_counts(occurrence_id TEXT PRIMARY KEY,
+          detections INTEGER,missing_sql INTEGER,missing_identity INTEGER,identity_errors INTEGER);
         CREATE TABLE IF NOT EXISTS recoveries(at REAL NOT NULL,occurrence_id TEXT NOT NULL,
           previous_last INTEGER NOT NULL,first_recovered INTEGER,new_frames INTEGER DEFAULT 0);
         CREATE TABLE IF NOT EXISTS notices(at REAL NOT NULL,service TEXT NOT NULL,state TEXT NOT NULL,detail TEXT NOT NULL);

@@ -13,6 +13,7 @@ x-feeder: &feeder
   networks: [backend]
 x-env: &env
   FEED_RUN_ID: ${FEED_RUN_ID:?set persistent run name}
+  FEED_KEEP_LIVE: ${FEED_KEEP_LIVE:-0}
   FEED_RUN_HOURS: ${FEED_RUN_HOURS:-24}
   FEED_SPEED: ${FEED_SPEED:-1}
   FEED_WORKERS: ${FEED_WORKERS:-1}
@@ -34,11 +35,16 @@ services:
   operator-worker:
     <<: *feeder
     image: visions-operator-worker:local
-    build: {context: ., dockerfile: feed/Dockerfile, target: worker}
+    build:
+      context: .
+      dockerfile: feed/Dockerfile
+      target: worker
+      args: {DETECTOR_IMAGE: "${OPERATOR_JAVA_IMAGE:-visions-detector-gpu-operator:local}"}
     environment:
       <<: *env
       ORT_PROVIDER: cuda
       MODEL_PATH: /models/yunet.onnx
+      DETECTION_RETENTION_TAG: "retention=rolling"
       DETECTION_BUCKET: visions-operator
       DETECTION_TOPIC: face.operator.v1
       KAFKA_BROKERS: kafka:9092

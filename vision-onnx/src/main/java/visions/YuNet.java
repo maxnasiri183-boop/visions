@@ -51,7 +51,7 @@ public final class YuNet implements AutoCloseable {
           gpu.add("cudnn_conv_algo_search", "HEURISTIC");
           opts.addCUDA(gpu);
         }
-        opts.enableProfiling("/tmp/yunet-ort");
+        opts.enableProfiling("/tmp/yunet-ort-" + java.util.UUID.randomUUID());
         profilePending = true;
       }
       System.out.println("onnxruntime_provider_requested=" + provider);

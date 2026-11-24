@@ -1,15 +1,17 @@
 import { GalleryPage } from "./Gallery";
+import { Health } from "./Health";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Route, View } from "./types";
 import { VideoPage } from "./Video";
 import { Search } from "./Search";
 import "./style.css";
-const labels: Partial<Record<View, string>> = {
+const labels: Record<View, string> = {
   live: "پخش زنده",
   recordings: "ویدیوها",
   search: "جست‌وجو با تصویر",
   gallery: "گالری مرجع",
+  health: "وضعیت سامانه",
 };
 function read(): Route {
   const q = new URLSearchParams(location.search),
@@ -68,6 +70,8 @@ function App() {
       <main>
         {route.view === "gallery" ? (
           <GalleryPage route={route} go={go} />
+        ) : route.view === "health" ? (
+          <Health go={go} />
         ) : route.view === "search" ? (
           <Search go={go} />
         ) : (

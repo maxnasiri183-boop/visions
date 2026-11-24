@@ -148,7 +148,10 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
         {active && (
           <p>
             نسخهٔ {fa(Number(active.version))} · {fa(active.people_count)} نفر ·
-            آستانهٔ شباهت {fa(active.threshold, 3)}
+            آستانهٔ شباهت {fa(active.threshold, 3)} ·{" "}
+            {active.calibration?.split_hashes
+              ? "تنظیم‌شده با داده‌های آزمایشی جداگانه"
+              : "آستانهٔ اولیه؛ برای این گالری ارزیابی نشده است"}
           </p>
         )}
         {editor && (

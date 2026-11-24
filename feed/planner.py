@@ -123,16 +123,12 @@ def read_catalog(db, cached):
     faults = DATA / "outages.json"
     outages = json.loads(faults.read_text()) if faults.exists() else {}
     seen = set()
+    unavailable = {}
     for entry in items:
         camera = bounded_id(entry["source_id"])
         seen.add(camera)
         if float(outages.get(camera, 0)) > time.time():
-            state(
-                db,
-                "source:" + camera,
-                "source_outage",
-                "Controlled source interruption",
-            )
+            unavailable[camera] = "Controlled source interruption"
             continue
         bounded_id(entry["asset_id"])
         bounded_id(entry["session_id"])
@@ -140,12 +136,20 @@ def read_catalog(db, cached):
             path = local(entry["path"])
             stat = path.stat()
             key = (path, stat.st_mtime_ns, stat.st_size, entry.get("sha256"))
-            if key not in cached:
+            if key not in cached or any(
+                not local(cached[key][name]).is_file()
+                for name in ("input_path", "media_path")
+            ):
                 cached[key] = asset(db, entry)
             groups[camera].append((entry, cached[key]))
-            state(db, "source:" + camera, "online")
         except (ValueError, OSError, subprocess.CalledProcessError) as error:
-            state(db, "source:" + camera, "source_outage", str(error))
+            unavailable[camera] = str(error)
+    for camera in seen:
+        if camera in unavailable:
+            groups.pop(camera, None)
+            state(db, "source:" + camera, "source_outage", unavailable[camera])
+        else:
+            state(db, "source:" + camera, "online")
     for r in db.execute(
         "SELECT service FROM service_state WHERE service LIKE 'source:%'"
     ):
@@ -177,7 +181,10 @@ def run():
             run_row = db.execute(
                 "SELECT * FROM runs WHERE run_id=?", (run_id,)
             ).fetchone()
-            if run_row["state"] != "running" or now >= run_row["stop_at"]:
+            timed_stop = (
+                os.getenv("FEED_KEEP_LIVE", "0") != "1" and now >= run_row["stop_at"]
+            )
+            if run_row["state"] != "running" or timed_stop:
                 db.execute(
                     "UPDATE runs SET state='finished' WHERE run_id=? AND state='running'",
                     (run_id,),
