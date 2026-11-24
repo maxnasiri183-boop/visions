@@ -10,6 +10,8 @@ import tempfile
 import time
 import uuid
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 
 from db import DATA, bounded_id, budget, connect, initialize, local, state
 
@@ -117,45 +119,143 @@ def asset(db, entry):
     )
 
 
-def read_catalog(db, cached):
-    items = json.loads((DATA / "catalog.json").read_text())
-    groups = defaultdict(list)
-    faults = DATA / "outages.json"
-    outages = json.loads(faults.read_text()) if faults.exists() else {}
-    seen = set()
-    unavailable = {}
-    for entry in items:
-        camera = bounded_id(entry["source_id"])
-        seen.add(camera)
-        if float(outages.get(camera, 0)) > time.time():
-            unavailable[camera] = "Controlled source interruption"
-            continue
-        bounded_id(entry["asset_id"])
-        bounded_id(entry["session_id"])
-        try:
-            path = local(entry["path"])
-            stat = path.stat()
-            key = (path, stat.st_mtime_ns, stat.st_size, entry.get("sha256"))
-            if key not in cached or any(
-                not local(cached[key][name]).is_file()
-                for name in ("input_path", "media_path")
+class Catalog:
+    """Prepare one private asset at a time without delaying source playout."""
+
+    def __init__(self):
+        self.pool = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="catalog-media"
+        )
+        self.pending = {}
+        self.ready = {}
+        self.failures = {}
+        self.previous = {}
+
+    @staticmethod
+    def prepare(entry):
+        # SQLite connections stay on their own thread. Media publication is atomic in asset().
+        with closing(connect()) as db:
+            return asset(db, entry)
+
+    def collect(self):
+        for key, future in list(self.pending.items()):
+            if not future.done():
+                continue
+            del self.pending[key]
+            try:
+                self.ready[key] = future.result()
+                self.failures.pop(key, None)
+            except (
+                OSError,
+                ValueError,
+                KeyError,
+                IndexError,
+                sqlite3.Error,
+                subprocess.SubprocessError,
+            ) as error:
+                self.failures[key] = (time.monotonic() + 5, str(error))
+
+    def schedule(self, db, waiting):
+        capacity = 2 - len(self.pending)
+        if not waiting or capacity <= 0:
+            return
+        retained = {r[0] for r in db.execute("SELECT checksum FROM media_assets")}
+        # Verify retained assets first on process restart, and start each camera's first
+        # usable clip before a single camera can occupy the entire build queue.
+        ordered = sorted(
+            waiting,
+            key=lambda k: (waiting[k][1].get("sha256") not in retained, waiting[k][0]),
+        )
+        for key in ordered:
+            if (
+                key in self.pending
+                or self.failures.get(key, (0,))[0] > time.monotonic()
             ):
-                cached[key] = asset(db, entry)
-            groups[camera].append((entry, cached[key]))
-        except (ValueError, OSError, subprocess.CalledProcessError) as error:
-            unavailable[camera] = str(error)
-    for camera in seen:
-        if camera in unavailable:
-            groups.pop(camera, None)
-            state(db, "source:" + camera, "source_outage", unavailable[camera])
-        else:
-            state(db, "source:" + camera, "online")
-    for r in db.execute(
-        "SELECT service FROM service_state WHERE service LIKE 'source:%'"
-    ):
-        if r[0].split(":", 1)[1] not in seen:
-            state(db, r[0], "source_outage", "Source removed from active catalog")
-    return groups
+                continue
+            self.pending[key] = self.pool.submit(self.prepare, waiting[key][1])
+            capacity -= 1
+            if not capacity:
+                break
+
+    def read(self, db):
+        self.collect()
+        entries = json.loads((DATA / "catalog.json").read_text())
+        faults = DATA / "outages.json"
+        outages = json.loads(faults.read_text()) if faults.exists() else {}
+        ready = defaultdict(list)
+        counts = defaultdict(int)
+        waiting = {}
+        unavailable = {}
+        keys = set()
+        for entry in entries:
+            camera = bounded_id(entry["source_id"])
+            counts[camera] += 1
+            if float(outages.get(camera, 0)) > time.time():
+                unavailable[camera] = "Controlled source interruption"
+                continue
+            bounded_id(entry["asset_id"])
+            bounded_id(entry["session_id"])
+            try:
+                path = local(entry["path"])
+                stat = path.stat()
+                key = (path, stat.st_mtime_ns, stat.st_size, entry.get("sha256"))
+                keys.add(key)
+                media = self.ready.get(key)
+                if media and all(
+                    local(media[name]).is_file()
+                    for name in ("input_path", "media_path")
+                ):
+                    ready[camera].append((entry, media))
+                else:
+                    self.ready.pop(key, None)
+                    waiting[key] = (counts[camera], entry)
+                    if key in self.failures:
+                        unavailable[camera] = self.failures[key][1]
+            except (OSError, ValueError) as error:
+                unavailable[camera] = str(error)
+        # A changing catalog cannot grow the preparation cache indefinitely.
+        for cache in (self.ready, self.failures):
+            for key in cache.keys() - keys:
+                del cache[key]
+        self.schedule(db, waiting)
+        state(
+            db,
+            "catalog-preparation",
+            "preparing" if waiting else "ready",
+            f"{len(waiting)} pending assets" if waiting else "",
+        )
+        groups = {}
+        for camera, total in counts.items():
+            if camera in unavailable:
+                state(db, "source:" + camera, "source_outage", unavailable[camera])
+                continue
+            choices = ready[camera]
+            remaining = total - len(choices)
+            if not remaining:
+                self.previous[camera] = {
+                    (e["asset_id"], m["checksum"]) for e, m in choices
+                }
+            elif camera in self.previous:
+                # Keep the prior rotation during a batch addition. Immediately exclude
+                # removed/replaced media, even when the next snapshot is still building.
+                kept = [
+                    (e, m)
+                    for e, m in choices
+                    if (e["asset_id"], m["checksum"]) in self.previous[camera]
+                ]
+                choices = kept or choices
+            if choices:
+                groups[camera] = choices
+            detail = f"Preparing {remaining} playlist assets" if remaining else ""
+            state(db, "source:" + camera, "online" if choices else "preparing", detail)
+        for camera in self.previous.keys() - counts.keys():
+            del self.previous[camera]
+        for row in db.execute(
+            "SELECT service FROM service_state WHERE service LIKE 'source:%'"
+        ):
+            if row[0].split(":", 1)[1] not in counts:
+                state(db, row[0], "source_outage", "Source removed from active catalog")
+        return groups
 
 
 def run():
@@ -176,7 +276,7 @@ def run():
     db.execute("INSERT OR IGNORE INTO run_totals(run_id) VALUES(?)", (run_id,))
     db.execute("""CREATE TABLE IF NOT EXISTS replay_controls(
         source_id TEXT PRIMARY KEY, speed REAL NOT NULL, changed_at REAL NOT NULL)""")
-    cache = {}
+    catalog = Catalog()
     while True:
         try:
             now = time.time()
@@ -198,7 +298,7 @@ def run():
                 state(db, "feeder", "storage_guard", "Reserved disk headroom reached")
                 time.sleep(2)
                 continue
-            groups = read_catalog(db, cache)
+            groups = catalog.read(db)
             for camera, choices in list(groups.items())[:stream_limit]:
                 pending = db.execute(
                     "SELECT count(*) FROM occurrences WHERE run_id=? AND source_id=? "
@@ -256,7 +356,12 @@ def run():
                     ),
                 )
                 state(db, "queue:" + camera, "active")
-            state(db, "feeder", "active" if groups else "source_outage", run_id)
+            status = (
+                "active"
+                if groups
+                else ("preparing" if catalog.pending else "source_outage")
+            )
+            state(db, "feeder", status, run_id)
         except (OSError, ValueError, KeyError, sqlite3.Error) as exc:
             state(db, "feeder", "source_outage", str(exc))
         time.sleep(0.25)
