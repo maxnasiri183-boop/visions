@@ -1,5 +1,5 @@
 import { useData } from "./hooks";
-import { Link, pts } from "./types";
+import { fa, Link, pts } from "./types";
 type Sighting = {
   occurrence_id: string;
   asset_id: string;
@@ -7,6 +7,7 @@ type Sighting = {
   frame_index: number;
   media_pts_s: number;
   detection_id: string;
+  version: number;
 };
 export function ReferenceAppearances({
   reference,
@@ -51,7 +52,8 @@ export function ReferenceAppearances({
             </span>
             <small>
               <bdi>{s.source_id}</bdi> ·{" "}
-              <bdi dir="ltr">{pts(s.media_pts_s)}</bdi>
+              <bdi dir="ltr">{pts(s.media_pts_s)}</bdi> · تصمیم ثبت‌شدهٔ نسخهٔ{" "}
+              {fa(s.version)}
             </small>
           </button>
         ))

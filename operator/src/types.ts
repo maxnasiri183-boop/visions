@@ -94,6 +94,7 @@ export type Version = {
 };
 export type Gallery = {
   active_version: string | null;
+  person_version?: number | null;
   versions: Version[];
   references: Reference[];
 };

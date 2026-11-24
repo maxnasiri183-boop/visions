@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS refs (
  reference_id TEXT PRIMARY KEY, person_id TEXT NOT NULL, display_name TEXT NOT NULL,
  session_id TEXT NOT NULL, status TEXT NOT NULL, reason TEXT, portrait_path TEXT NOT NULL,
  sha256 TEXT NOT NULL, embedding BLOB, created_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS retired_draft_refs(reference_id TEXT PRIMARY KEY REFERENCES refs(reference_id));
+CREATE VIEW IF NOT EXISTS eligible_draft AS SELECT r.* FROM refs r WHERE r.status='accepted'
+ AND NOT EXISTS(SELECT 1 FROM retired_draft_refs h WHERE h.reference_id=r.reference_id);
 CREATE TABLE IF NOT EXISTS versions (
  version INTEGER PRIMARY KEY, created_at REAL NOT NULL, threshold REAL NOT NULL,
  search_threshold REAL NOT NULL, model TEXT NOT NULL, preprocessing TEXT NOT NULL,
@@ -112,6 +115,9 @@ def init():
         from .browse import initialize
 
         initialize(db)
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS cards_person_scope ON gallery_cards(person_id,filter,scope DESC)"
+        )
 
 
 @contextlib.contextmanager
@@ -321,10 +327,12 @@ def gallery_hash(refs):
 def publish(calibration=None):
     with connect() as db:
         db.execute("BEGIN IMMEDIATE")
-        refs = db.execute("SELECT * FROM refs WHERE status='accepted'").fetchall()
+        refs = db.execute(
+            "SELECT reference_id,person_id,sha256 FROM eligible_draft"
+        ).fetchall()
         incompatible = db.execute(
-            """SELECT 1 FROM refs r JOIN reference_features f USING(reference_id)
-               WHERE r.status='accepted' AND (f.model!=? OR f.preprocessing!=? OR f.quality_policy!=?) LIMIT 1""",
+            """SELECT 1 FROM eligible_draft r JOIN reference_features f USING(reference_id)
+               WHERE (f.model!=? OR f.preprocessing!=? OR f.quality_policy!=?) LIMIT 1""",
             (MODEL, PRE, POLICY),
         ).fetchone()
         if incompatible:
@@ -380,7 +388,7 @@ def gallery(version=None):
             item["calibration"] = json.loads(item["calibration"])
         if version is None:
             refs = db.execute(
-                "SELECT * FROM refs JOIN reference_features USING(reference_id) ORDER BY person_id,created_at"
+                "SELECT * FROM refs JOIN reference_features USING(reference_id) WHERE NOT EXISTS(SELECT 1 FROM retired_draft_refs h WHERE h.reference_id=refs.reference_id) ORDER BY person_id,created_at"
             )
         else:
             if version not in [v["version"] for v in versions]:

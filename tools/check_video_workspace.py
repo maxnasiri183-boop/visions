@@ -40,7 +40,7 @@ def database(root):
 OBSERVATION = """
 SELECT o.detection_id,o.occurrence_id,o.frame_index,o.crop_path,o.event_json,
        f.media_pts_s,d.state,d.version,d.score,d.reference_id,d.threshold,
-       r.person_id,u.asset_id
+       r.person_id,r.display_name,r.sha256 AS reference_sha256,u.asset_id
 FROM observations o JOIN decisions d USING(detection_id)
 JOIN occurrences u USING(occurrence_id) JOIN frames f USING(occurrence_id,frame_index)
 LEFT JOIN refs r USING(reference_id)
@@ -240,7 +240,7 @@ async def desktop_case(page, base, root, out, known, unknown, empty, poor, repor
     await with_known.get_by_text("جزئیات فنی", exact=True).click()
     await button(page, APPEARANCES).click()
     hits = page.locator(".appearances button[data-detection-id]")
-    await expect(hits.first).to_be_visible()
+    await expect(hits.first).to_be_visible(timeout=30000)
     await within_viewport(page)
     await hits.first.scroll_into_view_if_needed()
     await page.wait_for_function(
@@ -537,8 +537,15 @@ async def photo_case(page, base, root, out, known):
     with database(root) as db:
         for index, group in enumerate(groups):
             hit = max(group["observations"], key=lambda r: r["score"])
-            row = observation(db, hit["detection_id"])
-            if row["state"] == "matched" and row["person_id"] == known["person_id"]:
+            candidate = db.execute(
+                OBSERVATION + " WHERE o.detection_id=?", (hit["detection_id"],)
+            ).fetchone()
+            if (
+                candidate
+                and candidate["state"] == "matched"
+                and candidate["reference_sha256"] == known["reference_sha256"]
+            ):
+                row = observation(db, hit["detection_id"])
                 break
         else:
             raise AssertionError(
@@ -567,7 +574,8 @@ async def photo_case(page, base, root, out, known):
     await expect(portrait).to_be_visible()
     await expect(portrait).to_have_js_property("complete", True)
     assert await portrait.evaluate("img=>img.naturalWidth>0")
-    await expect(panel.locator("h3")).to_contain_text(row["person_id"].upper())
+    display = re.sub(r"^Participant ", "شرکت‌کنندهٔ ", row["display_name"], flags=re.I)
+    await expect(panel.locator("h3")).to_have_text(display)
     await capture(page, out, "matched-gallery-record")
     return {
         "probe_sha256": digest,

@@ -307,6 +307,9 @@ export function Evidence({
             >
               محاسبهٔ مجدد شباهت دو تصویر
             </button>
+            <small>
+              محاسبه با بردارهای ذخیره‌شدهٔ چهره و مرجع انجام می‌شود.
+            </small>
             <p role="status">{pairCheck}</p>
           </div>
         )}

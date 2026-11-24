@@ -172,7 +172,7 @@ def references(db, scope, person, after="", limit=32):
     restriction = (
         "AND EXISTS(SELECT 1 FROM membership WHERE version=? AND reference_id=r.reference_id)"
         if scope
-        else ""
+        else "AND NOT EXISTS(SELECT 1 FROM retired_draft_refs h WHERE h.reference_id=r.reference_id)"
     )
     args = (person, after, scope) if scope else (person, after)
     rows = db.execute(

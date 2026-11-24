@@ -136,7 +136,7 @@ def search(db, vector, cutoff, body, occurrences=None):
                 f"""SELECT u.occurrence_id,u.asset_id,u.cycle,u.sequence,u.run_id,
                 EXISTS(SELECT 1 FROM feed.occurrences prior WHERE prior.run_id=u.run_id
                        AND prior.source_id=u.source_id AND prior.sequence<u.sequence AND prior.asset_sha256=u.asset_sha256)
-                repeated FROM feed.occurrences u WHERE u.occurrence_id IN ({placeholders})""",
+                repeated FROM feed.occurrences u WHERE u.state!='expired' AND u.occurrence_id IN ({placeholders})""",
                 ids,
             ):
                 history[r["occurrence_id"]] = dict(
@@ -146,6 +146,8 @@ def search(db, vector, cutoff, body, occurrences=None):
                     run_id=r["run_id"],
                     repeated=bool(r["repeated"]),
                 )
+            # An airing can expire while the exact search scans retained embeddings.
+            best = [g for g in best if g["occurrence_id"] in history]
         for g in best:
             g.update(
                 history.get(
