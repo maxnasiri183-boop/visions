@@ -1,0 +1,9 @@
+apiVersion: 1
+datasources:
+  - name: Pipeline metrics
+    type: prometheus
+    uid: visions-metrics
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
