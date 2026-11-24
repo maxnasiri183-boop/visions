@@ -1,17 +1,15 @@
 """Append held-out session-2 speech takes without changing the frozen calibration corpus."""
 
-import json
 from zipfile import ZipFile
 
 from . import core as c
-from .corpus import SUBJECTS, archive_frames, dump, encode, get_image, record
+from .corpus import SUBJECTS, append_playlist, archive_frames, dump, encode, get_image, record
 
 
 def extend():
     base = c.ROOT / "research"
     path = c.ROOT / "catalog.json"
-    catalog = json.loads(path.read_text())
-    catalog = [row for row in catalog if not row["asset_id"].startswith("speech-")]
+    catalog = []
     additions = []
     for person, (kind, _) in SUBJECTS.items():
         if kind == "absent":
@@ -55,8 +53,8 @@ def extend():
                         synthetic=False,
                     )
                 )
+    append_playlist(path, catalog)
     dump(base / "stream-extension.json", additions)
-    dump(path, catalog)
     print(f"Added {len(additions)} distinct capture assets to the playlist")
 
 

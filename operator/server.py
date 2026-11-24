@@ -8,6 +8,8 @@ import shutil
 import time
 from contextlib import closing
 from pathlib import Path
+from urllib.request import ProxyHandler, build_opener
+from urllib.error import URLError
 
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -99,7 +101,8 @@ def server_error(error):
 
 @app.get("/health")
 def health():
-    return {"ready": (DIST / "index.html").is_file()}
+    ready = (DIST / "index.html").is_file()
+    return jsonify(ready=ready), 200 if ready else 503
 
 
 @app.get("/api/operator/recordings")
@@ -234,6 +237,121 @@ def details(identity):
     return jsonify(
         event=json.loads(row["event_json"]),
         sql=json.loads(row["sql_row"]) if row["sql_row"] else None,
+    )
+
+
+@app.get("/api/operator/routine-load")
+def routine_load():
+    # English engineering drill-down for Grafana. Only return Routine Load diagnostics.
+    try:
+        with build_opener(ProxyHandler({})).open(
+            "http://operator-exporter:9125/summary", timeout=2
+        ) as response:
+            summary = json.load(response)
+    except (URLError, TimeoutError, OSError, ValueError):
+        return jsonify(
+            available=False,
+            state="unavailable",
+            last_error="Operator exporter unavailable",
+        ), 503
+    return jsonify(observed_at=summary.get("observed_at"), **summary["routine_load"])
+
+
+@app.get("/api/operator/health")
+def source_health():
+    now = time.time()
+    with closing(feed()) as db:
+        statuses = {
+            r["service"]: dict(r) for r in db.execute("SELECT * FROM service_state")
+        }
+        sources = {k.split(":", 1)[1] for k in statuses if k.startswith("source:")}
+        sources.update(
+            r[0] for r in db.execute("SELECT DISTINCT source_id FROM occurrences")
+        )
+        identity = (DATA / "identity.sqlite").is_file()
+        if identity:
+            db.execute(
+                "ATTACH DATABASE ? AS identities",
+                ((DATA / "identity.sqlite").as_uri() + "?mode=ro",),
+            )
+        has_receipts = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='source_received'"
+        ).fetchone()
+        items = []
+        for source in sorted(sources):
+            receipt = (
+                db.execute(
+                    "SELECT frame_index, ingested_at, observed_at, lag_ms FROM source_received WHERE source_id=?",
+                    (source,),
+                ).fetchone()
+                if has_receipts
+                else None
+            )
+            last = db.execute(
+                """SELECT f.frame_index,f.ingested_at,f.indexed_at,f.face_count,f.media_pts_s,f.occurrence_id
+                 FROM occurrences u JOIN frames f USING(occurrence_id) WHERE u.source_id=?
+                 ORDER BY u.scheduled_at DESC, f.frame_index DESC LIMIT 1""",
+                (source,),
+            ).fetchone()
+            queued = db.execute(
+                """SELECT count(*) n, min(scheduled_at) oldest FROM occurrences
+                 WHERE source_id=? AND state='queued'""",
+                (source,),
+            ).fetchone()
+            indexed = (
+                db.execute(
+                    """SELECT max(indexed_at) AS last FROM identities.indexed
+                     WHERE source_id=? AND state='ready'""",
+                    (source,),
+                ).fetchone()[0]
+                if identity
+                else None
+            )
+            errs = (
+                db.execute(
+                    """SELECT count(*) FROM identities.indexed WHERE source_id=?
+                     AND state='error' AND indexed_at>?""",
+                    (source, now - 300),
+                ).fetchone()[0]
+                if identity
+                else None
+            )
+            items.append(
+                dict(
+                    source_id=source,
+                    source=statuses.get("source:" + source),
+                    queue=statuses.get("queue:" + source),
+                    received=dict(receipt) if receipt else None,
+                    frame=dict(last) if last else None,
+                    searchable_at=indexed,
+                    recognition_errors_5m=errs,
+                    pending_clips=queued["n"],
+                    backlog_age_s=max(0, now - queued["oldest"])
+                    if queued["oldest"]
+                    else 0,
+                )
+            )
+        notices = [
+            dict(r)
+            for r in db.execute("""SELECT at,service,state FROM notices
+                  WHERE state IN ('retry','source_outage','storage_guard','backpressure','expired') ORDER BY at DESC LIMIT 12""")
+        ]
+        recoveries = [
+            dict(r)
+            for r in db.execute("SELECT * FROM recoveries ORDER BY at DESC LIMIT 8")
+        ]
+        expired = db.execute(
+            "SELECT coalesce(sum(expired),0) FROM run_totals"
+        ).fetchone()[0]
+    return jsonify(
+        at=now,
+        items=items,
+        feeder=statuses.get("feeder"),
+        worker=statuses.get("worker"),
+        notices=notices,
+        recoveries=recoveries,
+        expired=expired,
+        free_bytes=shutil.disk_usage(DATA).free,
     )
 
 

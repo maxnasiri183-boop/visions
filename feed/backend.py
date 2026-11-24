@@ -60,7 +60,7 @@ def provision():
             "Rules": [
                 {
                     "ID": "OperatorOrphanExpiry",
-                    "Filter": {"Prefix": ""},
+                    "Filter": {"Tag": {"Key": "retention", "Value": "rolling"}},
                     "Status": "Enabled",
                     "Expiration": {"Days": 1},
                 }
@@ -205,6 +205,40 @@ def prune_media(db):
         db.execute("DELETE FROM media_assets WHERE checksum=?", (item["checksum"],))
 
 
+def protect_pins(db, s3, pins):
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS protected_pins(occurrence_id TEXT PRIMARY KEY)"
+    )
+    done = {r[0] for r in db.execute("SELECT occurrence_id FROM protected_pins")}
+    for oid in set(pins) - done:
+        if not db.execute(
+            "SELECT 1 FROM occurrences WHERE occurrence_id=? AND state='complete'",
+            (oid,),
+        ).fetchone():
+            continue
+        keys = [
+            "crops/" + r[0] + ".png"
+            for r in db.execute(
+                "SELECT detection_id FROM observations WHERE occurrence_id=?", (oid,)
+            )
+        ]
+        keys.extend(
+            r[0]
+            for r in db.execute(
+                "SELECT manifest_key FROM frames WHERE occurrence_id=?", (oid,)
+            )
+        )
+        for key in keys:
+            s3.put_object_tagging(
+                Bucket=BUCKET,
+                Key=key,
+                Tagging={"TagSet": [{"Key": "retention", "Value": "pinned"}]},
+            )
+        db.execute("INSERT INTO protected_pins VALUES(?)", (oid,))
+    for oid in done - set(pins):
+        db.execute("DELETE FROM protected_pins WHERE occurrence_id=?", (oid,))
+
+
 def expire():
     db, s3 = connect(), store()
     # Only completed, owned occurrences past the retention window are eligible.
@@ -219,6 +253,7 @@ def expire():
                 or any(not isinstance(x, str) or not x.startswith("occ-") for x in pins)
             ):
                 raise ValueError("Expected up to eight pinned occurrence IDs")
+            protect_pins(db, s3, pins)
             rows = db.execute(
                 "SELECT occurrence_id,run_id FROM occurrences WHERE "
                 "(state='complete' AND finished_at<?) OR state='expiring' ORDER BY finished_at LIMIT 24",
@@ -282,8 +317,15 @@ def expire():
                 if crops.exists():
                     shutil.rmtree(crops)
                 db.execute("BEGIN IMMEDIATE")
+                db.execute(
+                    """INSERT OR REPLACE INTO expiry_counts SELECT ?,count(*),
+                    coalesce(sum(sql_visible_at IS NULL),0),coalesce(sum(search_state IS NULL),0),
+                    coalesce(sum(search_state='error'),0) FROM observations WHERE occurrence_id=?""",
+                    (oid, oid),
+                )
                 db.execute("DELETE FROM observations WHERE occurrence_id=?", (oid,))
                 db.execute("DELETE FROM frames WHERE occurrence_id=?", (oid,))
+                db.execute("DELETE FROM receipts WHERE occurrence_id=?", (oid,))
                 db.execute("DELETE FROM replay_events WHERE occurrence_id=?", (oid,))
                 db.execute(
                     "UPDATE occurrences SET state='expired',expired_at=?,input_path='',media_path='' "

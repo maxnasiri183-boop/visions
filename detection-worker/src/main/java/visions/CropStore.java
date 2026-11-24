@@ -26,7 +26,8 @@ final class CropStore {
     byte[] png = buffer.toByteArray();
     String key = "crops/" + id + ".png";
     long start = System.nanoTime();
-    client.putObject(r -> r.bucket(bucket).key(key).contentType("image/png").ifNoneMatch("*"),
+    client.putObject(r -> r.bucket(bucket).key(key).contentType("image/png")
+            .tagging(System.getenv("DETECTION_RETENTION_TAG")).ifNoneMatch("*"),
         RequestBody.fromBytes(png));
     double uploadMs = (System.nanoTime() - start) / 1e6;
     String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(png));

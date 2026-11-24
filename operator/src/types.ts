@@ -68,6 +68,7 @@ export type Reference = {
   session_id: string;
 };
 export type Version = {
+  calibration?: { split_hashes?: Record<string, string> };
   version: string;
   created_at: number | string;
   threshold: number;

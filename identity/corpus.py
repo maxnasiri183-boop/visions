@@ -96,6 +96,25 @@ def dump(path, data):
     tmp.replace(path)
 
 
+def append_playlist(path, assets):
+    """Retain existing playout order and refuse collisions with operator assets."""
+    catalog = json.loads(path.read_text()) if path.exists() else []
+    by_id = {(row["source_id"], row["asset_id"]): row for row in catalog}
+    if len(by_id) != len(catalog):
+        raise ValueError("Duplicate source and asset IDs in existing playlist")
+    original_count = len(catalog)
+    for asset in assets:
+        key = asset["source_id"], asset["asset_id"]
+        if key in by_id:
+            if any(by_id[key].get(field) != value for field, value in asset.items()):
+                raise ValueError(f"Existing playlist entry conflicts with research asset {key}")
+            continue
+        by_id[key] = asset
+        catalog.append(asset)
+    if len(catalog) != original_count:
+        dump(path, catalog)
+
+
 def build(root, partial=False):
     base = root / "research"
     for name in (
@@ -207,9 +226,9 @@ def build(root, partial=False):
                 path.write_bytes(res.read())
         satellite.append(cv2.imread(str(path)))
     clip("empty", [], satellite, 2.0)
+    append_playlist(root / "catalog.json", catalog)
     for role, entries in members.items():
         dump(base / (role + ".json"), entries)
-    dump(root / "catalog.json", catalog)
     (base / "CREDITS.txt").write_text(
         CREDIT + "\nhttps://www.conradsanderson.id.au/vidtimit/\n"
         "Original license notice is retained in archives/VidTIMIT-original-notice.html. Private research pilot.\n"

@@ -10,14 +10,15 @@ x-common: &operator
   security_opt: [no-new-privileges:true]
   cap_drop: [ALL]
   volumes:
-    - ./private/operator:/data
-    - ./private/yunet.onnx:/models/yunet.onnx:ro
+    - ${OPERATOR_DATA_HOST:-./private/operator}:/data
+    - ${YUNET_MODEL_HOST:-./private/yunet.onnx}:/models/yunet.onnx:ro
   logging:
     driver: json-file
     options: {max-size: 10m, max-file: "3"}
 services:
   operator-ui:
     <<: *operator
+    networks: [default, monitoring]
     ports: ["127.0.0.1:8092:8092"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health',timeout=2)"]
@@ -33,3 +34,7 @@ services:
       timeout: 3s
       retries: 4
       start_period: 20s
+networks:
+  monitoring:
+    external: true
+    name: ${VISION_NETWORK:-visions_default}

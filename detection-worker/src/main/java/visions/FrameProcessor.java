@@ -34,6 +34,11 @@ final class FrameProcessor {
 
   void process(FileFeed feed, FileFeed.Frame frame, String source, String asset, boolean warmup, boolean emitFrameEvent)
       throws Exception {
+    if (emitFrameEvent) {
+      System.out.println("frame_received=" + json.writeValueAsString(java.util.Map.of(
+          "source_id", source, "frame_index", frame.index(), "pts", frame.pts(),
+          "ingested_at", frame.ingested().toString(), "lag_ms", frame.lagMs())));
+    }
     String manifest = "frames/" + source + "/" + asset + "/" + VERSION + "/v0/" + frame.index() + ".json";
     var stats = new LinkedHashMap<String, Object>();
     stats.put("source", source);
