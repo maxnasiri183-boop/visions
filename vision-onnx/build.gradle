@@ -1,4 +1,6 @@
 plugins { id 'java-library' }
+def runtimeArtifact = providers.gradleProperty('cuda').orNull == 'true' ? 'onnxruntime_gpu' : 'onnxruntime'
 dependencies {
-    api 'com.microsoft.onnxruntime:onnxruntime:1.20.0'
+    api "com.microsoft.onnxruntime:${runtimeArtifact}:1.20.0"
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.6'
 }

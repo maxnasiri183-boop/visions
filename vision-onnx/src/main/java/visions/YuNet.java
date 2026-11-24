@@ -1,7 +1,12 @@
 package visions;
 
 import ai.onnxruntime.*;
+import ai.onnxruntime.providers.OrtCUDAProviderOptions;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.awt.image.BufferedImage;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -13,16 +18,44 @@ public final class YuNet implements AutoCloseable {
   private final OrtEnvironment env = OrtEnvironment.getEnvironment();
   private final OrtSession session;
 
+  private boolean profilePending;
+  private double preprocessMs;
+  private double inferenceMs;
+
+  public double preprocessMs() {
+    return preprocessMs;
+  }
+
+  public double inferenceMs() {
+    return inferenceMs;
+  }
+
   public record Face(Rectangle box, List<List<Double>> points, double score) {}
 
   public YuNet(String path) throws OrtException {
+    String provider = System.getenv().getOrDefault("ORT_PROVIDER", "cpu");
+    boolean cuda = switch (provider) {
+      case "cpu" -> false;
+      case "cuda" -> true;
+      default -> throw new IllegalArgumentException("Unsupported ORT_PROVIDER: " + provider);
+    };
     try (var opts = new OrtSession.SessionOptions()) {
       opts.setIntraOpNumThreads(2);
+      if (cuda) {
+        try (var gpu = new OrtCUDAProviderOptions(0)) {
+          gpu.add("cudnn_conv_algo_search", "HEURISTIC");
+          opts.addCUDA(gpu);
+        }
+        opts.enableProfiling("/tmp/yunet-ort");
+        profilePending = true;
+      }
+      System.out.println("onnxruntime_provider_requested=" + provider);
       session = env.createSession(path, opts);
     }
   }
 
   public List<Face> detect(BufferedImage image) throws OrtException {
+    long start = System.nanoTime();
     double scale = Math.min((double) SIZE / image.getWidth(), (double) SIZE / image.getHeight());
     int w = Math.max(1, (int) Math.round(image.getWidth() * scale));
     int h = Math.max(1, (int) Math.round(image.getHeight() * scale));
@@ -44,7 +77,7 @@ public final class YuNet implements AutoCloseable {
     var candidates = new ArrayList<Face>();
     try (var tensor =
             OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), new long[] {1, 3, SIZE, SIZE});
-        var result = session.run(java.util.Map.of("input", tensor))) {
+        var result = run(tensor, start)) {
       for (int stride : new int[] {8, 16, 32}) {
         FloatBuffer cls = output(result, "cls_", stride), obj = output(result, "obj_", stride);
         FloatBuffer boxes = output(result, "bbox_", stride),
@@ -79,6 +112,43 @@ public final class YuNet implements AutoCloseable {
       if (keep.stream().noneMatch(other -> iou(other.box(), face.box()) > 0.3)) keep.add(face);
     }
     return keep;
+  }
+
+  private OrtSession.Result run(OnnxTensor tensor, long start) throws OrtException {
+    long ready = System.nanoTime();
+    preprocessMs = (ready - start) / 1e6;
+    var result = session.run(java.util.Map.of("input", tensor));
+    inferenceMs = (System.nanoTime() - ready) / 1e6;
+    if (profilePending) {
+      try {
+        verifyKernels(Path.of(session.endProfiling()));
+        profilePending = false;
+      } catch (RuntimeException | OrtException e) {
+        result.close();
+        throw e;
+      }
+    }
+    return result;
+  }
+
+  // Inspect one real inference per GPU session. Subsequent frames are unprofiled.
+  private static void verifyKernels(Path profile) {
+    int gpu = 0, cpu = 0;
+    try {
+      var events = new ObjectMapper().readTree(profile.toFile());
+      for (var event : events) {
+        if (!event.path("name").asText().endsWith("_kernel_time")) continue;
+        String provider = event.path("args").path("provider").asText();
+        if (provider.equals("CUDAExecutionProvider")) gpu++;
+        if (provider.equals("CPUExecutionProvider")) cpu++;
+      }
+      Files.delete(profile);
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not verify ONNX Runtime kernel profile", e);
+    }
+    System.out.printf("ort_profile_cuda_kernels=%d ort_profile_cpu_kernels=%d%n", gpu, cpu);
+    if (gpu == 0) throw new IllegalStateException("GPU inference issued no CUDA kernels");
+    if (cpu > 0) System.err.println("ONNX Runtime profile detected CPU execution in GPU mode");
   }
 
   private static FloatBuffer output(OrtSession.Result result, String name, int stride) {

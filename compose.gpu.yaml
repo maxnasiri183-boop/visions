@@ -1,0 +1,14 @@
+services:
+  detector-gpu:
+    extends:
+      file: compose.yaml
+      service: detector
+    image: visions-detector-gpu:latest
+    profiles: [gpu]
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    devices:
+      - nvidia.com/gpu=0
+    environment:
+      ORT_PROVIDER: cuda
