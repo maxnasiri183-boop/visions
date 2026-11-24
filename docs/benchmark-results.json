@@ -1,0 +1,406 @@
+{
+  "baseline": [
+    {
+      "run": "bench-4ba4bc0ba9af",
+      "provider": "cpu",
+      "image_id": "sha256:08001d36d9d49e1861c3c659b8d5380f36461847e5b1d87ac750ca3c9b42522d",
+      "start_utc": "2026-11-23T21:47:43.268944+00:00",
+      "streams": 1,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 300,
+      "duration_s": 29.947056531906128,
+      "target_fps": 10,
+      "inference_fps": 10.017679022323101,
+      "per_stream_fps": [
+        10.017679022323101
+      ],
+      "dropped_frames": 0,
+      "detections": 150,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.053065538406372,
+        "p95": 5.489716529846191
+      },
+      "stage_p95_ms": {
+        "decode_ms": 1.883768,
+        "preprocess_ms": 17.977233,
+        "inference_ms": 16.167776,
+        "crop_upload_ms": 18.746328,
+        "manifest_io_ms": 23.76152,
+        "kafka_publish_ms": 6.006379,
+        "lag_ms": 31.818452
+      },
+      "gpu_samples": 29,
+      "mean_gpu_pct": 0,
+      "peak_vram_mib": 0
+    },
+    {
+      "run": "bench-a62410f7073f",
+      "provider": "cpu",
+      "image_id": "sha256:08001d36d9d49e1861c3c659b8d5380f36461847e5b1d87ac750ca3c9b42522d",
+      "start_utc": "2026-11-23T21:48:20.600284+00:00",
+      "streams": 2,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 600,
+      "duration_s": 29.962716341018677,
+      "target_fps": 20,
+      "inference_fps": 20.024886701564025,
+      "per_stream_fps": [
+        10.012443350782013,
+        10.013445948396786
+      ],
+      "dropped_frames": 0,
+      "detections": 300,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.1702442169189453,
+        "p95": 5.534848213195801
+      },
+      "stage_p95_ms": {
+        "decode_ms": 1.96199,
+        "preprocess_ms": 19.439434,
+        "inference_ms": 20.739324,
+        "crop_upload_ms": 18.421143,
+        "manifest_io_ms": 23.263403,
+        "kafka_publish_ms": 5.518604,
+        "lag_ms": 0.366695
+      },
+      "gpu_samples": 29,
+      "mean_gpu_pct": 0,
+      "peak_vram_mib": 0
+    },
+    {
+      "run": "bench-cb10a945513e",
+      "provider": "cpu",
+      "image_id": "sha256:08001d36d9d49e1861c3c659b8d5380f36461847e5b1d87ac750ca3c9b42522d",
+      "start_utc": "2026-11-23T21:48:56.687527+00:00",
+      "streams": 4,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 1200,
+      "duration_s": 29.965473413467407,
+      "target_fps": 40,
+      "inference_fps": 40.04608849131958,
+      "per_stream_fps": [
+        10.018543232637313,
+        10.011522122829895,
+        10.011856291341566,
+        10.014529964514109
+      ],
+      "dropped_frames": 0,
+      "detections": 600,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.12599778175354,
+        "p95": 5.552894830703735
+      },
+      "stage_p95_ms": {
+        "decode_ms": 1.845773,
+        "preprocess_ms": 19.81741,
+        "inference_ms": 21.58161,
+        "crop_upload_ms": 22.844624,
+        "manifest_io_ms": 24.208212000000003,
+        "kafka_publish_ms": 5.037254,
+        "lag_ms": 12.171849
+      },
+      "gpu_samples": 29,
+      "mean_gpu_pct": 0,
+      "peak_vram_mib": 0
+    },
+    {
+      "run": "bench-345306c3f937",
+      "provider": "cpu",
+      "image_id": "sha256:08001d36d9d49e1861c3c659b8d5380f36461847e5b1d87ac750ca3c9b42522d",
+      "start_utc": "2026-11-23T21:49:35.383588+00:00",
+      "streams": 8,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 2400,
+      "duration_s": 30.02541184425354,
+      "target_fps": 80,
+      "inference_fps": 79.9322924344609,
+      "per_stream_fps": [
+        10.00253002264524,
+        10.001196130121249,
+        9.995198331286671,
+        10.00253002264524,
+        10.002863511614416,
+        10.002863511614416,
+        10.002863511614416,
+        9.991536554307613
+      ],
+      "dropped_frames": 0,
+      "detections": 1200,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.1919169425964355,
+        "p95": 5.650469064712524
+      },
+      "stage_p95_ms": {
+        "decode_ms": 7.435613,
+        "preprocess_ms": 27.824041,
+        "inference_ms": 37.870335,
+        "crop_upload_ms": 31.387921,
+        "manifest_io_ms": 37.768084,
+        "kafka_publish_ms": 12.9869,
+        "lag_ms": 311.026623
+      },
+      "gpu_samples": 27,
+      "mean_gpu_pct": 0,
+      "peak_vram_mib": 0
+    },
+    {
+      "run": "bench-e26333812888",
+      "provider": "cuda",
+      "image_id": "sha256:24b9cebdf24e88c96caa9d2cf970174f35f072d6fad80d0fb77042fceb660446",
+      "start_utc": "2026-11-23T21:50:22.595260+00:00",
+      "streams": 1,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 300,
+      "duration_s": 30.120740175247192,
+      "target_fps": 10,
+      "inference_fps": 9.959914605502817,
+      "per_stream_fps": [
+        9.959914605502817
+      ],
+      "dropped_frames": 0,
+      "detections": 150,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.398409605026245,
+        "p95": 5.91725754737854
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.532516,
+        "preprocess_ms": 30.148083,
+        "inference_ms": 8.069493,
+        "crop_upload_ms": 33.747994,
+        "manifest_io_ms": 50.083651,
+        "kafka_publish_ms": 14.936312,
+        "lag_ms": 279.179152
+      },
+      "gpu_samples": 28,
+      "mean_gpu_pct": 1.1071428571428572,
+      "peak_vram_mib": 481,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-4dea3b05abf6",
+      "provider": "cuda",
+      "image_id": "sha256:24b9cebdf24e88c96caa9d2cf970174f35f072d6fad80d0fb77042fceb660446",
+      "start_utc": "2026-11-23T21:51:12.002127+00:00",
+      "streams": 2,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 600,
+      "duration_s": 29.97087264060974,
+      "target_fps": 20,
+      "inference_fps": 20.019437111317735,
+      "per_stream_fps": [
+        10.009718555658868,
+        10.011054642982673
+      ],
+      "dropped_frames": 0,
+      "detections": 300,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.2052783966064453,
+        "p95": 5.541305303573608
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.519383,
+        "preprocess_ms": 25.56284,
+        "inference_ms": 6.113927,
+        "crop_upload_ms": 26.665498,
+        "manifest_io_ms": 36.507563,
+        "kafka_publish_ms": 10.266985,
+        "lag_ms": 141.604731
+      },
+      "gpu_samples": 27,
+      "mean_gpu_pct": 3.4444444444444446,
+      "peak_vram_mib": 959,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-d317f34eab07",
+      "provider": "cuda",
+      "image_id": "sha256:24b9cebdf24e88c96caa9d2cf970174f35f072d6fad80d0fb77042fceb660446",
+      "start_utc": "2026-11-23T21:52:06.177941+00:00",
+      "streams": 4,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 1200,
+      "duration_s": 30.03805899620056,
+      "target_fps": 40,
+      "inference_fps": 39.94931896737352,
+      "per_stream_fps": [
+        9.98732974184338,
+        10.008320573291556,
+        10.005983911270484,
+        10.005316539402465
+      ],
+      "dropped_frames": 0,
+      "detections": 600,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.299743890762329,
+        "p95": 5.6235291957855225
+      },
+      "stage_p95_ms": {
+        "decode_ms": 11.13581,
+        "preprocess_ms": 24.73004,
+        "inference_ms": 7.004266,
+        "crop_upload_ms": 29.551061,
+        "manifest_io_ms": 41.326339,
+        "kafka_publish_ms": 10.929918,
+        "lag_ms": 485.363641
+      },
+      "gpu_samples": 27,
+      "mean_gpu_pct": 6.62962962962963,
+      "peak_vram_mib": 1914,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    },
+    {
+      "run": "bench-d4ac1df8983d",
+      "provider": "cuda",
+      "image_id": "sha256:24b9cebdf24e88c96caa9d2cf970174f35f072d6fad80d0fb77042fceb660446",
+      "start_utc": "2026-11-23T21:53:06.160754+00:00",
+      "streams": 8,
+      "width": 512,
+      "height": 512,
+      "source_fps": 10,
+      "sampling": "all",
+      "warmup_frames_per_stream": 20,
+      "batch_size": 1,
+      "measured_frames": 2400,
+      "duration_s": 30.09924578666687,
+      "target_fps": 80,
+      "inference_fps": 79.73621721322776,
+      "per_stream_fps": [
+        10.00825824283424,
+        9.97796672230065,
+        9.96702715165347,
+        10.001251536263545,
+        9.998251743834274,
+        9.978630529608001,
+        9.975312534165763,
+        10.008592113882173
+      ],
+      "dropped_frames": 0,
+      "detections": 1200,
+      "quality_min_iou": 0.8362241494329553,
+      "sql_latency_s": {
+        "p50": 3.339860439300537,
+        "p95": 6.811377763748169
+      },
+      "stage_p95_ms": {
+        "decode_ms": 10.741063,
+        "preprocess_ms": 31.31972,
+        "inference_ms": 9.102582,
+        "crop_upload_ms": 37.764974,
+        "manifest_io_ms": 49.960139,
+        "kafka_publish_ms": 17.230176,
+        "lag_ms": 935.424997
+      },
+      "gpu_samples": 27,
+      "mean_gpu_pct": 13.481481481481481,
+      "peak_vram_mib": 3824,
+      "profiled_nodes_per_stream": [
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        },
+        {
+          "cuda_kernels": 106,
+          "cpu_kernels": 0
+        }
+      ]
+    }
+  ]
+}

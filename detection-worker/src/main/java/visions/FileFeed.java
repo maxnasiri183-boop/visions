@@ -11,8 +11,10 @@ import java.util.concurrent.TimeUnit;
 // Bounded, seekable acceptance clips. ffprobe and ffmpeg both select the first video stream.
 final class FileFeed {
   interface Receiver {
-    void accept(BufferedImage image, long pts, Instant ingested) throws Exception;
+    void accept(Frame frame) throws Exception;
   }
+
+  record Frame(BufferedImage image, int index, long pts, Instant ingested, double decodeMs, double lagMs) {}
 
   final int width, height;
   final List<Integer> timeBase;
@@ -50,8 +52,8 @@ final class FileFeed {
     frames = metadata.required("frames");
   }
 
-  void play(double speed, int selected, Receiver receiver) throws Exception {
-    if (!Double.isFinite(speed) || speed <= 0 || selected < 0 || selected >= frames.size())
+  void play(double speed, int selected, int loops, Receiver receiver) throws Exception {
+    if (!Double.isFinite(speed) || speed <= 0 || loops < 1 || selected < -1 || selected >= frames.size())
       throw new IllegalArgumentException(
           "Expected positive finite speed and an existing frame index");
     var decoder =
@@ -62,6 +64,8 @@ final class FileFeed {
                 "error",
                 "-threads",
                 "1",
+                "-stream_loop",
+                Integer.toString(loops - 1),
                 "-noautorotate",
                 "-i",
                 clip.toString(),
@@ -81,15 +85,22 @@ final class FileFeed {
     var image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
     byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
     long firstPts = pts(0), start = System.nanoTime();
+    int framesPerLoop = frames.size();
+    // Sustained mode uses the pinned constant-rate fixture.
+    long period = loops == 1 ? 0 : pts(framesPerLoop - 1) - firstPts + pts(1) - firstPts;
     try (var input = new DataInputStream(new BufferedInputStream(decoder.getInputStream()))) {
-      for (int i = 0; i < frames.size(); i++) {
+      for (int i = 0; i < Math.multiplyExact(framesPerLoop, loops); i++) {
+        long readStarted = System.nanoTime();
         input.readFully(pixels);
-        long timestamp = pts(i);
+        double readMs = (System.nanoTime() - readStarted) / 1e6;
+        long timestamp = pts(i % framesPerLoop) + (i / framesPerLoop) * period;
         long due =
             start
                 + (long) ((timestamp - firstPts) * 1e9 * timeBase.get(0) / timeBase.get(1) / speed);
         TimeUnit.NANOSECONDS.sleep(Math.max(0, due - System.nanoTime()));
-        if (i == selected) receiver.accept(image, timestamp, Instant.now());
+        if (selected == -1 || i == selected)
+          receiver.accept(new Frame(image, i, timestamp, Instant.now(), readMs,
+              Math.max(0, System.nanoTime() - due) / 1e6));
       }
       if (input.read() != -1 || decoder.waitFor() != 0)
         throw new IOException("Frame count/decode mismatch");
@@ -98,7 +109,7 @@ final class FileFeed {
     }
     System.out.printf(
         "decoded_frames=%d selected_frame=%d speed=%.3f elapsed_s=%.3f%n",
-        frames.size(), selected, speed, (System.nanoTime() - start) / 1e9);
+        framesPerLoop * loops, selected, speed, (System.nanoTime() - start) / 1e9);
   }
 
   private long pts(int index) {
