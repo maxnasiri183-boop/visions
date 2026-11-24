@@ -36,3 +36,5 @@ Use the --threshold option on verify to adjust the default cosine cutoff of 0.36
 ## Browser workspace
 
 Play the fixed clip, inspect a frame and its stored crop, trace an observation through Kafka and SQL, or replay it from the [Review workspace](docs/review.md).
+
+The [Operations guide](docs/operations.md) covers live pipeline rates, ingestion backlog, stage timings and Grafana. The [A100 profile](docs/gpu.md) verifies the execution provider inside the container. The [sustained benchmark](docs/benchmark.md) measures complete labeled feeds across simultaneous streams.

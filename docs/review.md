@@ -14,15 +14,13 @@ Review includes the API and launches a bounded CPU detector subprocess for each 
 
 ## Deploy
 
-Run these commands at the repository root with Docker Compose v2. The host needs Python 3.10+, FFmpeg and ffprobe to prepare the reference clip. Supply a working Docker CLI for the current user. On this host the equivalent privileged command is `sudo docker compose`. Build the CPU worker first because the Review image copies its Java distribution.
+From the checkout, run the following command on this A100 host. It builds Review and both CPU and GPU workers, starts the persistent services, and waits for their health checks. The GPU sampler uses the host NVIDIA CDI device. Omit `--gpu` on a CPU-only host. The command uses Ubuntu's Docker CLI and can prompt for sudo if the current user needs it. The fixture builder requires Python 3.10+, FFmpeg and ffprobe.
 
 ```sh
-python3 tools/fixture.py
-export REVIEW_UID="$(id -u)" REVIEW_GID="$(id -g)"
-docker compose build detector
-docker compose build review
-docker compose -f compose.yaml -f compose.monitoring.yaml up -d kafka s3 starrocks review prometheus grafana
+tools/start_workspace.sh --gpu
 ```
+
+The [Operations guide](operations.md) covers collectors, retention and dashboard semantics. The [GPU guide](gpu.md) describes installing the container toolkit and building the separate on-demand CUDA worker.
 
 On a fresh deployment, choose **New run** in Review. The first job provisions the database, primary-key table, Routine Load job, bucket and Kafka topic. To run the standalone CPU reference check, use the existing acceptance runner.
 
