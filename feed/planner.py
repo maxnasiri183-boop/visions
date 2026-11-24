@@ -174,6 +174,8 @@ def run():
         (run_id, now, now + horizon),
     )
     db.execute("INSERT OR IGNORE INTO run_totals(run_id) VALUES(?)", (run_id,))
+    db.execute("""CREATE TABLE IF NOT EXISTS replay_controls(
+        source_id TEXT PRIMARY KEY, speed REAL NOT NULL, changed_at REAL NOT NULL)""")
     cache = {}
     while True:
         try:
@@ -220,6 +222,8 @@ def run():
                 if due > now:
                     continue
                 entry, clip = choices[seq % len(choices)]
+                setting = db.execute("SELECT speed FROM replay_controls WHERE source_id=?", (camera,)).fetchone()
+                selected_speed = setting[0] if setting else speed
                 oid = "occ-" + uuid.uuid4().hex
                 db.execute(
                     """INSERT INTO occurrences(occurrence_id,run_id,source_id,asset_id,asset_sha256,
@@ -238,7 +242,7 @@ def run():
                         clip["media_path"],
                         due,
                         clip["frame_count"],
-                        speed,
+                        selected_speed,
                         clip["duration_s"],
                         int(entry.get("synthetic", False)),
                     ),

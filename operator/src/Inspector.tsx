@@ -194,6 +194,7 @@ export function Evidence({
             : titles[state]}
         </p>
         {known && <h3>{nameFa(result.display_name)}</h3>}
+        {result && ["matched", "unknown", "poor_quality"].includes(result.state) && <small>نتیجهٔ ثبت‌شدهٔ پردازش ویدئو</small>}
         {state === "unknown" && (
           <small>
             {result?.score == null
@@ -292,11 +293,17 @@ export function Evidence({
         </div>
         <dl className="facts">
           {[
+            ["جلسهٔ ضبط", rec.session_id],
+            ["تاریخ ضبط اصلی", "در مجموعه‌داده اعلام نشده است"],
+            ["زمان شروع بازپخش", date(rec.scheduled_at)],
             ["منبع / فریم", rec.source_id + " / " + frame.frame_index],
             [
               "آستانهٔ تصمیم",
               result?.threshold == null ? "—" : fa(result.threshold, 3),
             ],
+            ["نسخهٔ مدل", result?.model || "—"],
+            ["پیش‌پردازش", result?.preprocessing || "—"],
+            ["نسخهٔ گالری", result?.version == null ? "—" : fa(Number(result.version))],
             ["اطمینان تشخیص چهره", fa(face.confidence, 4)],
             ["موضوع کافکا", face.topic],
             [

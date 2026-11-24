@@ -69,6 +69,12 @@ def image_response(path):
     return response
 
 
+@bp.get("/references/<ref>/appearances")
+def appearances(ref):
+    from .appearances import for_reference
+    return jsonify(for_reference(ref, request.args.get("version", type=int)))
+
+
 @bp.get("/references/<ref>/portrait")
 def portrait(ref):
     with c.connect() as db:

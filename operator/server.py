@@ -102,7 +102,34 @@ def server_error(error):
 @app.get("/health")
 def health():
     ready = (DIST / "index.html").is_file()
-    return jsonify(ready=ready), 200 if ready else 503
+    return jsonify(ready=ready, revision=os.getenv("VISIONS_REVISION", "unrecorded")), 200 if ready else 503
+
+
+@app.route("/api/operator/sources/<source>/speed", methods=["GET", "POST"])
+def source_speed(source):
+    # Changes apply when the planner assigns a new occurrence. In-flight retries keep their original timing.
+    catalog = json.loads((DATA / "catalog.json").read_text())
+    if source not in {entry["source_id"] for entry in catalog}:
+        abort(404)
+    choices = [0.5, 1.0, 2.0]
+    path = DATA / "feed.sqlite"
+    with closing(sqlite3.connect(path.as_uri() + "?mode=rw", uri=True, timeout=4)) as db:
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE name='replay_controls'").fetchone():
+            abort(503)
+        if request.method == "POST":
+            body = request.get_json(silent=True)
+            value = body.get("speed") if isinstance(body, dict) else None
+            if type(value) not in (int, float) or value not in choices:
+                abort(400)
+            with db:
+                db.execute("""INSERT INTO replay_controls VALUES(?,?,?) ON CONFLICT(source_id)
+                           DO UPDATE SET speed=excluded.speed,changed_at=excluded.changed_at""", (source, value, time.time()))
+        wanted = db.execute("SELECT speed FROM replay_controls WHERE source_id=?", (source,)).fetchone()
+        active = db.execute("""SELECT speed FROM occurrences WHERE source_id=? AND state='processing'
+                             ORDER BY scheduled_at DESC LIMIT 1""", (source,)).fetchone()
+        last = db.execute("SELECT speed FROM occurrences WHERE source_id=? ORDER BY scheduled_at DESC LIMIT 1", (source,)).fetchone()
+    return jsonify(source_id=source, configured=wanted[0] if wanted else (last[0] if last else 1.0),
+                   current=active[0] if active else None, choices=choices)
 
 
 @app.get("/api/operator/recordings")

@@ -1,3 +1,4 @@
+import { FeedSpeed } from "./FeedSpeed";
 import { FaceOverlay } from "./FaceOverlay";
 import {
   ArrowRight,
@@ -24,8 +25,8 @@ import { useData } from "./hooks";
 
 export function VideoPage({ route, go }: { route: Route; go: Link }) {
   const live = route.view === "live";
-  const [source, setSource] = useState(""),
-    [follow, setFollow] = useState(live && !route.occ);
+  const source = route.source || "";
+  const [follow, setFollow] = useState(live && !route.occ);
   const list = useData<{ items: Recording[]; sources: string[] }>(
     "/api/operator/recordings?source=" + encodeURIComponent(source),
     2000,
@@ -94,14 +95,14 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
               بازگشت به لحظه قبلی
             </button>
           )}
+          {live && source && <FeedSpeed key={source} source={source} />}
           <label className="inline-filter">
             <Camera />
             <span className="sr">منبع</span>
             <select
               value={source}
               onChange={(e) => {
-                go({ view: route.view });
-                setSource(e.target.value);
+                go({ view: route.view, source:e.target.value || undefined });
                 setChosen("");
                 setFollow(live);
               }}
@@ -120,7 +121,7 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
           key={rec.occurrence_id}
           {...{ rec, route, go, follow, keep, freeze }}
           onLive={() => {
-            go({ view: "live" });
+            go({ view: "live", source: route.source });
             setFollow(true);
           }}
         />
