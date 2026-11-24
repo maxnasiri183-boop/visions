@@ -1,0 +1,62 @@
+name: visions-operator-feed
+x-feeder: &feeder
+  image: visions-operator-feeder:local
+  build: {context: ., dockerfile: feed/Dockerfile, target: python}
+  user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
+  init: true
+  restart: unless-stopped
+  volumes:
+    - ${OPERATOR_DATA_HOST:?set absolute private operator directory}:/data
+  logging:
+    driver: json-file
+    options: {max-size: 5m, max-file: "2"}
+  networks: [backend]
+x-env: &env
+  FEED_RUN_ID: ${FEED_RUN_ID:?set persistent run name}
+  FEED_RUN_HOURS: ${FEED_RUN_HOURS:-24}
+  FEED_SPEED: ${FEED_SPEED:-1}
+  FEED_WORKERS: ${FEED_WORKERS:-1}
+  FEED_SOURCE_LIMIT: ${FEED_SOURCE_LIMIT:-8}
+  FEED_QUEUE_PER_SOURCE: ${FEED_QUEUE_PER_SOURCE:-2}
+  FEED_MIN_FREE_BYTES: ${FEED_MIN_FREE_BYTES:-25769803776}
+  FEED_RETENTION_SECONDS: ${FEED_RETENTION_SECONDS:-3600}
+  OPERATOR_DATA: /data
+services:
+  operator-feeder:
+    <<: *feeder
+    environment: *env
+    command: ["planner.py"]
+    healthcheck: &health
+      test: ["CMD","python","health.py","feeder"]
+      interval: 15s
+      timeout: 3s
+      retries: 4
+  operator-worker:
+    <<: *feeder
+    image: visions-operator-worker:local
+    build: {context: ., dockerfile: feed/Dockerfile, target: worker}
+    environment:
+      <<: *env
+      ORT_PROVIDER: cuda
+      MODEL_PATH: /models/yunet.onnx
+      DETECTION_BUCKET: visions-operator
+      DETECTION_TOPIC: face.operator.v1
+      KAFKA_BROKERS: kafka:9092
+      DB_HOST: starrocks
+      S3_ENDPOINT: http://s3:9000
+      AWS_ACCESS_KEY_ID: visions-local
+      AWS_SECRET_ACCESS_KEY: ${S3_PASSWORD:?set S3_PASSWORD}
+      NO_PROXY: kafka,s3,starrocks,localhost,127.0.0.1
+      JAVA_TOOL_OPTIONS: "-Xmx512m -XX:ActiveProcessorCount=2"
+    volumes:
+      - ${OPERATOR_DATA_HOST}:/data
+      - ${YUNET_MODEL_HOST:?set absolute model path}:/models/yunet.onnx:ro
+    devices: [nvidia.com/gpu=0]
+    healthcheck:
+      <<: *health
+      test: ["CMD","python3.12","health.py","worker"]
+      start_period: 30s
+networks:
+  backend:
+    external: true
+    name: ${VISION_NETWORK:-visions_default}
