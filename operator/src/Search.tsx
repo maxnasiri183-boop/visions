@@ -29,27 +29,40 @@ export function Search({ go }: { go: Link }) {
   const examples = useData<{ label: string; url: string }[]>(
     "/api/operator/examples",
   );
-  const active = useRef<AbortController | null>(null);
-  useEffect(() => () => active.current?.abort(), []);
-  function begin() {
-    active.current?.abort();
-    active.current = new AbortController();
-    return active.current.signal;
+  const active = useRef<{
+    kind: "upload" | "search";
+    controller: AbortController;
+  } | null>(null);
+  useEffect(() => () => active.current?.controller.abort(), []);
+  function begin(kind: "upload" | "search") {
+    active.current?.controller.abort();
+    const controller = new AbortController();
+    active.current = { kind, controller };
+    return controller.signal;
   }
   function invalidateResults() {
-    active.current?.abort();
     setResults(undefined);
+    if (active.current?.kind !== "search") return;
+    active.current.controller.abort();
     setWorking(false);
     setError("");
   }
-  async function upload(file: Blob) {
-    const signal = begin();
+  async function upload(input: Blob | string) {
+    const signal = begin("upload");
     setWorking(true);
     setError("");
     setResults(undefined);
     setProbe(undefined);
     setFace(undefined);
     try {
+      let file: Blob;
+      if (typeof input === "string") {
+        const response = await fetch(input, { signal });
+        if (!response.ok) throw Error("تصویر نمونه در دسترس نیست.");
+        file = await response.blob();
+      } else {
+        file = input;
+      }
       if (file.size > 8 * 1024 ** 2)
         throw Error("حجم تصویر باید کمتر از ۸ مگابایت باشد.");
       const form = new FormData();
@@ -71,7 +84,7 @@ export function Search({ go }: { go: Link }) {
   }
   async function search() {
     if (!probe || face === undefined) return;
-    const signal = begin();
+    const signal = begin("search");
     setError("");
     setWorking(true);
     setResults(undefined);
@@ -170,15 +183,7 @@ export function Search({ go }: { go: Link }) {
                   <button
                     disabled={working}
                     key={ex.url}
-                    onClick={async () => {
-                      try {
-                        const r = await fetch(ex.url);
-                        if (!r.ok) throw Error();
-                        await upload(await r.blob());
-                      } catch {
-                        setError("تصویر نمونه در دسترس نیست.");
-                      }
-                    }}
+                    onClick={() => void upload(ex.url)}
                   >
                     {ex.label}
                   </button>
