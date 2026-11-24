@@ -15,4 +15,6 @@ RUN apt-get -o Dir::Etc::sourcelist=sources.list.d/ubuntu.sources -o Dir::Etc::s
     && rm -rf /var/lib/apt/lists/*
 COPY --from=java /opt/java/openjdk /opt/java/openjdk
 COPY --from=build /src/detection-worker/build/install/detection-worker /opt/worker
+ARG VISIONS_REVISION=unrecorded
+LABEL org.opencontainers.image.revision=$VISIONS_REVISION
 ENTRYPOINT ["/opt/worker/bin/detection-worker"]

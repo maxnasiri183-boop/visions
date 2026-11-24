@@ -42,3 +42,7 @@ The [Operations guide](docs/operations.md) covers live pipeline rates, ingestion
 ## Persian video operator pilot
 
 Watch a private source, inspect a face against a versioned reference gallery, or find historical video appearances from an independent photo. Use the SSH tunnel and the prepared-server startup command in the [operator guide](docs/operator.md).
+
+## Portrait-to-video and production-rate demo
+
+Open a real enrollment portrait, follow a matching face into its recording, inspect the frozen decision and SQL evidence, then change the source speed and watch Kafka and SQL rates in Grafana. The [laptop walkthrough and deployment runbook](docs/portrait-replay.md) includes the SSH command, a separate 300,000-person synthetic browsing fixture and release verification.
