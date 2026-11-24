@@ -4,11 +4,14 @@ import ai.onnxruntime.*;
 import ai.onnxruntime.providers.OrtCUDAProviderOptions;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.awt.image.BufferedImage;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +21,7 @@ public final class YuNet implements AutoCloseable {
   private final OrtEnvironment env = OrtEnvironment.getEnvironment();
   private final OrtSession session;
 
+  private final ReusableInput reusable;
   private boolean profilePending;
   private double preprocessMs;
   private double inferenceMs;
@@ -39,6 +43,12 @@ public final class YuNet implements AutoCloseable {
       case "cuda" -> true;
       default -> throw new IllegalArgumentException("Unsupported ORT_PROVIDER: " + provider);
     };
+    boolean reuse = switch (System.getenv().getOrDefault("YUNET_REUSE_INPUT", "auto")) {
+      case "auto" -> cuda;
+      case "true" -> true;
+      case "false" -> false;
+      default -> throw new IllegalArgumentException("YUNET_REUSE_INPUT must be auto, true or false");
+    };
     try (var opts = new OrtSession.SessionOptions()) {
       opts.setIntraOpNumThreads(2);
       if (cuda) {
@@ -51,6 +61,13 @@ public final class YuNet implements AutoCloseable {
       }
       System.out.println("onnxruntime_provider_requested=" + provider);
       session = env.createSession(path, opts);
+      try {
+        reusable = reuse ? new ReusableInput(env) : null;
+      } catch (OrtException ex) {
+        session.close();
+        throw ex;
+      }
+      System.out.println("reusable_input=" + reuse);
     }
   }
 
@@ -60,24 +77,18 @@ public final class YuNet implements AutoCloseable {
     int w = Math.max(1, (int) Math.round(image.getWidth() * scale));
     int h = Math.max(1, (int) Math.round(image.getHeight() * scale));
     double sx = (double) w / image.getWidth(), sy = (double) h / image.getHeight();
-    var padded = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_RGB);
+    var padded = reusable == null ? new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_RGB) : reusable.raster;
     var graphics = padded.createGraphics();
+    if (reusable != null && (w != SIZE || h != SIZE)) {
+      graphics.setColor(Color.BLACK);
+      graphics.fillRect(0, 0, SIZE, SIZE);
+    }
     graphics.setRenderingHint(
         RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
     graphics.drawImage(image, 0, 0, w, h, null);
     graphics.dispose();
-    int plane = SIZE * SIZE;
-    float[] chw = new float[3 * plane];
-    int[] rgb = padded.getRGB(0, 0, SIZE, SIZE, null, 0, SIZE);
-    for (int i = 0; i < plane; i++) {
-      chw[i] = rgb[i] & 255;
-      chw[plane + i] = (rgb[i] >> 8) & 255;
-      chw[2 * plane + i] = (rgb[i] >> 16) & 255;
-    }
     var candidates = new ArrayList<Face>();
-    try (var tensor =
-            OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), new long[] {1, 3, SIZE, SIZE});
-        var result = run(tensor, start)) {
+    try (var result = inference(padded, start)) {
       for (int stride : new int[] {8, 16, 32}) {
         FloatBuffer cls = output(result, "cls_", stride), obj = output(result, "obj_", stride);
         FloatBuffer boxes = output(result, "bbox_", stride),
@@ -112,6 +123,47 @@ public final class YuNet implements AutoCloseable {
       if (keep.stream().noneMatch(other -> iou(other.box(), face.box()) > 0.3)) keep.add(face);
     }
     return keep;
+  }
+
+  // Each worker owns one session and processes frames serially. The native tensor
+  // shares the direct buffer's storage; no previous inference is in flight at refill.
+  private static final class ReusableInput {
+    final BufferedImage raster = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_RGB);
+    final FloatBuffer channels = ByteBuffer.allocateDirect(3 * SIZE * SIZE * Float.BYTES)
+        .order(ByteOrder.nativeOrder()).asFloatBuffer();
+    final OnnxTensor tensor;
+
+    ReusableInput(OrtEnvironment env) throws OrtException {
+      tensor = OnnxTensor.createTensor(env, channels, new long[] {1, 3, SIZE, SIZE});
+    }
+
+    void fill() {
+      int[] rgb = ((DataBufferInt) raster.getRaster().getDataBuffer()).getData();
+      int plane = SIZE * SIZE;
+      for (int i = 0; i < plane; i++) {
+        channels.put(i, rgb[i] & 255);
+        channels.put(plane + i, (rgb[i] >> 8) & 255);
+        channels.put(2 * plane + i, (rgb[i] >> 16) & 255);
+      }
+    }
+  }
+
+  private OrtSession.Result inference(BufferedImage padded, long start) throws OrtException {
+    if (reusable != null) {
+      reusable.fill();
+      return run(reusable.tensor, start);
+    }
+    int plane = SIZE * SIZE;
+    float[] chw = new float[3 * plane];
+    int[] rgb = padded.getRGB(0, 0, SIZE, SIZE, null, 0, SIZE);
+    for (int i = 0; i < plane; i++) {
+      chw[i] = rgb[i] & 255;
+      chw[plane + i] = (rgb[i] >> 8) & 255;
+      chw[2 * plane + i] = (rgb[i] >> 16) & 255;
+    }
+    try (var tensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), new long[] {1, 3, SIZE, SIZE})) {
+      return run(tensor, start);
+    }
   }
 
   private OrtSession.Result run(OnnxTensor tensor, long start) throws OrtException {
@@ -164,6 +216,7 @@ public final class YuNet implements AutoCloseable {
 
   @Override
   public void close() throws OrtException {
+    if (reusable != null) reusable.tensor.close();
     session.close();
   }
 }
