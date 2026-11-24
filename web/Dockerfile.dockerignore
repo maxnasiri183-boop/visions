@@ -1,0 +1,11 @@
+**
+!tools/
+!tools/acceptance.py
+!tools/requirements-review.txt
+!deploy/
+!deploy/detections.sql
+!web/
+!web/*.py
+!web/requirements.txt
+!web/static/
+!web/static/**

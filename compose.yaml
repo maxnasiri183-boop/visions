@@ -1,5 +1,16 @@
+x-logging: &bounded-logs
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
 services:
   kafka:
+    restart: unless-stopped
+    logging: *bounded-logs
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9092"]
+      start_period: 45s
+      interval: 20s
+      timeout: 5s
+      retries: 6
     image: apache/kafka:3.9.1
     ports: ["127.0.0.1:19092:19092"]
     environment:
@@ -15,6 +26,14 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes: [kafka-data:/var/lib/kafka/data]
   s3:
+    restart: unless-stopped
+    logging: *bounded-logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/ready"]
+      start_period: 45s
+      interval: 20s
+      timeout: 5s
+      retries: 6
     image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     entrypoint: ["minio"]
     command: ["server", "/data"]
@@ -24,6 +43,14 @@ services:
     ports: ["127.0.0.1:19000:9000"]
     volumes: [crop-data:/data]
   starrocks:
+    restart: unless-stopped
+    logging: *bounded-logs
+    healthcheck:
+      test: ["CMD", "mysql", "-h127.0.0.1", "-P9030", "-uroot", "-e", "SHOW BACKENDS"]
+      start_period: 45s
+      interval: 20s
+      timeout: 5s
+      retries: 6
     image: starrocks/allin1-ubuntu:3.4.10
     command: ["/bin/sh", "-c", "umask 022 && exec ./entrypoint.sh"]
     ulimits:
@@ -33,6 +60,8 @@ services:
       - fe-meta:/data/deploy/starrocks/fe/meta
       - be-data:/data/deploy/starrocks/be/storage
   detector:
+    image: visions-detector:latest
+    logging: *bounded-logs
     profiles: [jobs]
     build: .
     environment:
@@ -45,6 +74,33 @@ services:
       MODEL_PATH: /input/yunet.onnx
     volumes: [./private:/input:ro]
     command: ["/input/feed.mkv", "demo-01", "5", "1.0"]
+  review:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    init: true
+    restart: unless-stopped
+    user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
+    ports: ["127.0.0.1:8091:8091"]
+    volumes: [./private:/app/private]
+    environment:
+      BROKER: kafka:9092
+      KAFKA_BROKERS: kafka:9092
+      DB_HOST: starrocks
+      DB_PORT: 9030
+      S3_ENDPOINT: http://s3:9000
+      AWS_ACCESS_KEY_ID: visions-local
+      AWS_SECRET_ACCESS_KEY: ${S3_PASSWORD:?set S3_PASSWORD in .env}
+      S3_PASSWORD: ${S3_PASSWORD}
+      MODEL_PATH: /app/private/yunet.onnx
+      NO_PROXY: kafka,s3,starrocks,localhost,127.0.0.1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+    logging: *bounded-logs
+
 volumes:
   kafka-data: {}
   crop-data: {}

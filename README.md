@@ -32,3 +32,7 @@ For the Kaggle example, run `python samples.py kaggle` and use the files in `sam
 - https://huggingface.co/opencv/face_recognition_sface
 
 Use the --threshold option on verify to adjust the default cosine cutoff of 0.363. A similarity score is not a probability.
+
+## Browser workspace
+
+Play the fixed clip, inspect a frame and its stored crop, trace an observation through Kafka and SQL, or replay it from the [Review workspace](docs/review.md).

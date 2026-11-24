@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import time
@@ -23,25 +24,29 @@ from PIL import Image
 
 TOPIC = "face.detected.v1"
 BUCKET = "visions-private"
-BROKER = "127.0.0.1:19092"
+BROKER = os.getenv("BROKER", "127.0.0.1:19092")
 PRIVATE = Path("private")
 DOCKER = ["docker", "compose"]
 
 
-def provision():
-    password = next(
+def storage():
+    password = os.getenv("S3_PASSWORD") or next(
         line.split("=", 1)[1]
         for line in Path(".env").read_text().splitlines()
         if line.startswith("S3_PASSWORD=")
     )
-    s3 = boto3.client(
+    return boto3.client(
         "s3",
-        endpoint_url="http://127.0.0.1:19000",
+        endpoint_url=os.getenv("S3_ENDPOINT", "http://127.0.0.1:19000"),
         region_name="us-east-1",
         aws_access_key_id="visions-local",
         aws_secret_access_key=password,
         config=Config(proxies={}, s3={"addressing_style": "path"}),
     )
+
+
+def provision():
+    s3 = storage()
     try:
         s3.create_bucket(Bucket=BUCKET)
     except ClientError as exc:
@@ -55,8 +60,8 @@ def provision():
     finally:
         admin.close()
     db = pymysql.connect(
-        host="127.0.0.1",
-        port=19030,
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        port=int(os.getenv("DB_PORT", "19030")),
         user="root",
         autocommit=True,
         cursorclass=pymysql.cursors.DictCursor,
@@ -81,8 +86,12 @@ def ready():
     while True:
         try:
             return provision()
-        except pymysql.ProgrammingError:
-            raise
+        except pymysql.ProgrammingError as exc:
+            # A newly registered BE can report Alive before its first disk heartbeat.
+            if "Current available backends: []" not in str(exc) or time.monotonic() >= end:
+                raise
+            print("Waiting for StarRocks backend capacity", flush=True)
+            time.sleep(3)
         except Exception as exc:
             if time.monotonic() >= end:
                 raise
@@ -98,7 +107,7 @@ def run_worker(source, speed):
             "--rm",
             "--no-deps",
             "-T",
-            "detector",
+            os.getenv("DETECTOR_SERVICE", "detector"),
             "/input/feed.mkv",
             source,
             "5",
