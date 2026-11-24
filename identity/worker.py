@@ -153,7 +153,16 @@ def main():
     arg.add_argument(
         "--once", action="store_true", help="Drain available observations, then exit"
     )
-    once = arg.parse_args().once
+    arg.add_argument(
+        "--opencv-threads",
+        type=int,
+        default=1,
+        help="CPU threads for recognition inference in this worker process",
+    )
+    args = arg.parse_args()
+    if args.opencv_threads < 1:
+        arg.error("--opencv-threads must be positive")
+    once = args.once
     stopping = False
 
     def stop(*_):
@@ -168,6 +177,7 @@ def main():
     decoder = Decoder()
     gallery = ExactGallery()
     c.engines()  # Fail startup if the model is missing or its hash differs.
+    cv2.setNumThreads(args.opencv_threads)
     after, last_sweep = 0, 0
     while not stopping:
         try:

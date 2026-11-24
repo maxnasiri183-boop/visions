@@ -28,7 +28,7 @@ services:
       retries: 5
   recognition:
     <<: *operator
-    command: ["python","-m","identity.worker"]
+    command: ["python","-m","identity.worker","--opencv-threads","${RECOGNITION_OPENCV_THREADS:-4}"]
     healthcheck:
       test: ["CMD","python","-c","import os,time; assert time.time()-os.stat('/tmp/visions-recognition.ready').st_mtime < 20"]
       interval: 10s
