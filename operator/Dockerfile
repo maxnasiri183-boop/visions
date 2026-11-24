@@ -6,5 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY identity identity
 COPY operator/server.py operator/server.py
 COPY operator/dist operator/dist
-ENV PYTHONPATH=/srv
+ARG VISIONS_REVISION=unrecorded
+LABEL org.opencontainers.image.revision=$VISIONS_REVISION
+ENV PYTHONPATH=/srv VISIONS_REVISION=$VISIONS_REVISION
 CMD ["python","operator/server.py"]

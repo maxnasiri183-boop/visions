@@ -12,6 +12,7 @@ function read(): Route {
     view = q.get("view") as View;
   return {
     view: Object.hasOwn(labels, view) ? view : "live",
+    source: q.get("source") || undefined,
     occ: q.get("occ") || undefined,
     frame: q.has("frame") ? Number(q.get("frame")) : undefined,
     face: q.get("face") || undefined,

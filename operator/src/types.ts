@@ -1,6 +1,7 @@
 export type View = "live" | "recordings" | "search" | "gallery" | "health";
 export type Route = {
   view: View;
+  source?: string;
   occ?: string;
   frame?: number;
   face?: string;
@@ -57,6 +58,8 @@ export type Decision = {
   score?: number;
   threshold?: number;
   version?: string;
+  model?: string;
+  preprocessing?: string;
   candidate_person_id?: string;
   reference_id?: string;
   portrait_url?: string;

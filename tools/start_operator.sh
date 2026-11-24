@@ -11,6 +11,7 @@ case "${1:-}" in
 esac
 export OPERATOR_DATA_HOST="${OPERATOR_DATA_HOST:-$PWD/private/operator}"
 export YUNET_MODEL_HOST="${YUNET_MODEL_HOST:-$PWD/private/yunet.onnx}"
+export VISIONS_REVISION="$(git rev-parse HEAD)"
 export REVIEW_UID="$(id -u)" REVIEW_GID="$(id -g)"
 export OPERATOR_JAVA_IMAGE="${OPERATOR_JAVA_IMAGE:-visions-detector-gpu-operator:local}"
 export FEED_KEEP_LIVE="${FEED_KEEP_LIVE:-1}" FEED_RUN_HOURS="${FEED_RUN_HOURS:-24}"
@@ -31,7 +32,7 @@ fi
 export FEED_RUN_ID
 docker_cli=(docker)
 if ! docker info >/dev/null 2>&1; then
-  docker_cli=(sudo --preserve-env=OPERATOR_DATA_HOST,YUNET_MODEL_HOST,OPERATOR_JAVA_IMAGE,REVIEW_UID,REVIEW_GID,FEED_RUN_ID,FEED_KEEP_LIVE,FEED_RUN_HOURS,FEED_SPEED,FEED_WORKERS,FEED_RETENTION_SECONDS,FEED_QUEUE_PER_SOURCE,FEED_MIN_FREE_BYTES docker)
+  docker_cli=(sudo --preserve-env=VISIONS_REVISION,OPERATOR_DATA_HOST,YUNET_MODEL_HOST,OPERATOR_JAVA_IMAGE,REVIEW_UID,REVIEW_GID,FEED_RUN_ID,FEED_KEEP_LIVE,FEED_RUN_HOURS,FEED_SPEED,FEED_WORKERS,FEED_RETENTION_SECONDS,FEED_QUEUE_PER_SOURCE,FEED_MIN_FREE_BYTES docker)
 fi
 ui=("${docker_cli[@]}" compose --env-file .env -f compose.operator.yaml)
 build_ui() {

@@ -1,3 +1,4 @@
+import { ReferenceAppearances } from "./ReferenceAppearances";
 import {
   ArrowRight,
   ChevronDown,
@@ -308,6 +309,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
                     <bdi>{r.session_id}</bdi>
                   </small>
                   <p>{reasonFa(r.reason)}</p>
+                  {r.status === "accepted" && <ReferenceAppearances reference={r.reference_id} version={route.version} go={go} />}
                 </figure>
               ))}
             </div>
