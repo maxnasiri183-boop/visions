@@ -11,11 +11,18 @@ function read(): Route {
   const q = new URLSearchParams(location.search),
     view = q.get("view") as View;
   return {
-    view: Object.hasOwn(labels, view) ? view : "live",
+    view: document.documentElement.dataset.galleryFixture
+      ? "gallery"
+      : Object.hasOwn(labels, view)
+        ? view
+        : "live",
     source: q.get("source") || undefined,
     occ: q.get("occ") || undefined,
     frame: q.has("frame") ? Number(q.get("frame")) : undefined,
     face: q.get("face") || undefined,
+    q: q.get("q") || undefined,
+    status: q.get("status") || undefined,
+    after: q.get("after") || undefined,
     person: q.get("person") || undefined,
     version: q.get("version") || undefined,
     originOcc: q.get("originOcc") || undefined,
@@ -50,7 +57,14 @@ function App() {
   }, [route.view]);
   return (
     <>
-      <ShellHeader route={route} go={go} />
+      {document.documentElement.dataset.galleryFixture ? (
+        <header className="top">
+          <strong dir="ltr">Visions</strong>
+          <span>گالری آزمایشی · داده‌های ساختگی برای آزمون کارایی</span>
+        </header>
+      ) : (
+        <ShellHeader route={route} go={go} />
+      )}
       <main>
         {route.view === "gallery" ? (
           <GalleryPage route={route} go={go} />

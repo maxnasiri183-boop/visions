@@ -7,7 +7,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   api,
   date,
@@ -15,6 +15,7 @@ import {
   Gallery as Data,
   Link,
   Reference,
+  PeoplePage,
   Route,
 } from "./types";
 import { useData } from "./hooks";
@@ -33,35 +34,74 @@ const reasonFa = (s?: string) =>
             ? "نور تصویر مناسب نیست."
             : "تصویر شرایط ثبت مرجع را ندارد.";
 export function GalleryPage({ route, go }: { route: Route; go: Link }) {
-  const [q, setQ] = useState(""),
+  const fixture = !!document.documentElement.dataset.galleryFixture;
+  const [q, setQ] = useState(route.q || ""),
     [refresh, setRefresh] = useState(0),
     [editor, setEditor] = useState(false);
   const [key, setKey] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
-  const url =
-    "/api/identity/gallery" +
-    (route.version ? "/" + encodeURIComponent(route.version) : "") +
-    "?r=" +
-    refresh;
-  const data = useData<Data>(url);
-  const refs = data.value?.references || [],
-    versions = data.value?.versions || [];
-  const [status, setStatus] = useState("");
-  const personRefs = refs.filter((r) => r.person_id === route.person);
-  const shown = refs.filter(
-    (r) =>
-      (!status || r.status === status) &&
-      [r.person_id, nameFa(r.display_name)]
-        .join(" ")
-        .toLowerCase()
-        .includes(q.toLowerCase()),
+  const status = route.status || "";
+  const query = new URLSearchParams({ r: String(refresh) });
+  if (route.version) query.set("version", route.version);
+  const data = useData<Data>("/api/identity/versions?" + query);
+  const versions = data.value?.versions || [];
+  const personQuery = new URLSearchParams(query);
+  if (route.q) personQuery.set("q", route.q);
+  if (status) personQuery.set("status", status);
+  if (route.after) personQuery.set("after", route.after);
+  const page = useData<PeoplePage>("/api/identity/people?" + personQuery);
+  const [detailPage, setDetailPage] = useState({ person: "", after: "" });
+  const detailQuery = new URLSearchParams(query);
+  if (detailPage.person === route.person && detailPage.after)
+    detailQuery.set("after", detailPage.after);
+  const portraits = useData<{
+    references: Reference[];
+    next_cursor: string | null;
+  }>(
+    route.person
+      ? "/api/identity/people/" +
+          encodeURIComponent(route.person) +
+          "?" +
+          detailQuery
+      : null,
   );
-  const people = new Map<string, Reference>();
-  shown.forEach((r) => {
-    if (!people.has(r.person_id) || r.status === "accepted")
-      people.set(r.person_id, r);
-  });
+  const personRefs = portraits.value?.references || [];
+  const people = page.value?.people || [];
+  const goRef = useRef(go);
+  goRef.current = go;
+  const listKey = personQuery.toString();
+  function showPerson(person: string) {
+    sessionStorage.setItem(
+      "visions-gallery-scroll",
+      JSON.stringify([listKey, window.scrollY]),
+    );
+    go({ ...route, person });
+  }
+  useEffect(() => {
+    setQ(route.q || "");
+  }, [route.q]);
+  useEffect(() => {
+    if (q === (route.q || "")) return;
+    const timer = window.setTimeout(
+      () =>
+        goRef.current({
+          ...route,
+          person: undefined,
+          q: q || undefined,
+          after: undefined,
+        }),
+      220,
+    );
+    return () => window.clearTimeout(timer);
+  }, [q, route]);
+  useEffect(() => {
+    if (route.person || !page.value) return;
+    const stored = JSON.parse(
+      sessionStorage.getItem("visions-gallery-scroll") || "null",
+    );
+    if (stored?.[0] === listKey) window.scrollTo(0, stored[1]);
+  }, [route.person, listKey, page.value]);
   const active = versions.find(
     (v) =>
       String(v.version) === String(route.version ?? data.value?.active_version),
@@ -118,17 +158,19 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
           <button
             onClick={() => {
               if (history.state?.visions) history.back();
-              else go({ view: "gallery", version: route.version });
+              else go({ ...route, person: undefined });
             }}
           >
             <ArrowRight />
             بازگشت به صفحهٔ قبل
           </button>
         ) : (
-          <button className="primary" onClick={() => setEditor(!editor)}>
-            <Settings2 />
-            مدیریت گالری
-          </button>
+          !fixture && (
+            <button className="primary" onClick={() => setEditor(!editor)}>
+              <Settings2 />
+              مدیریت گالری
+            </button>
+          )
         )}
       </div>
       <div
@@ -172,7 +214,14 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
               وضعیت ثبت‌نام
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(e) =>
+                  go({
+                    ...route,
+                    status: e.target.value || undefined,
+                    after: undefined,
+                    person: undefined,
+                  })
+                }
               >
                 <option value="">همهٔ تصاویر</option>
                 <option value="accepted">پذیرفته‌شده</option>
@@ -242,37 +291,71 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
               <p role="status">{message}</p>
             </section>
           )}
-          {!shown.length && (
+          {page.error && <p role="alert">{page.error}</p>}
+          {!page.value && !page.error && <p role="status">در حال دریافت…</p>}
+          {page.value && !people.length && (
             <p className="empty">
               فرد یا تصویر مرجعی برای این انتخاب پیدا نشد.
             </p>
           )}
           <div className="portrait-grid">
-            {Array.from(people.values()).map((r) => (
+            {people.map((r) => (
               <button
                 key={r.person_id}
                 aria-pressed={r.person_id === route.person}
-                onClick={() =>
-                  go({
-                    view: "gallery",
-                    person: r.person_id,
-                    version: route.version,
-                  })
-                }
+                onClick={() => showPerson(r.person_id)}
               >
                 <img
-                  src={r.portrait_url}
+                  src={r.thumbnail_url}
+                  loading="lazy"
+                  width="144"
+                  height="144"
                   alt={"تصویر ثبت‌نام " + nameFa(r.display_name)}
                 />
                 <strong>{nameFa(r.display_name)}</strong>
                 <small>
-                  {fa(shown.filter((x) => x.person_id === r.person_id).length)}{" "}
-                  تصویر ثبت‌نام ·{" "}
+                  {fa(r.reference_count)} تصویر ثبت‌نام ·{" "}
                   {r.status === "accepted" ? "واجد شرایط" : "ردشده"}
                 </small>
               </button>
             ))}
           </div>
+          <nav className="row" aria-label="صفحه‌های گالری">
+            {route.after && (
+              <button
+                aria-label="صفحهٔ قبل"
+                onClick={() => {
+                  const prev = sessionStorage.getItem(
+                    "visions-gallery-prev:" + listKey,
+                  );
+                  go({ ...route, person: undefined, after: prev || undefined });
+                }}
+              >
+                صفحهٔ قبل
+              </button>
+            )}
+            {page.value?.next_cursor && (
+              <button
+                aria-label="صفحهٔ بعد"
+                onClick={() => {
+                  go({
+                    ...route,
+                    person: undefined,
+                    after: page.value!.next_cursor!,
+                  });
+                  const next = new URLSearchParams(personQuery);
+                  next.set("after", page.value!.next_cursor!);
+                  sessionStorage.setItem(
+                    "visions-gallery-prev:" + next.toString(),
+                    route.after || "",
+                  );
+                  window.scrollTo(0, 0);
+                }}
+              >
+                صفحهٔ بعد
+              </button>
+            )}
+          </nav>
         </section>
         {route.person && (
           <aside className="card gallery-person" aria-label="پروندهٔ مرجع">
@@ -281,7 +364,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
               <button
                 className="icon-only"
                 aria-label="بستن پرونده"
-                onClick={() => go({ view: "gallery", version: route.version })}
+                onClick={() => go({ ...route, person: undefined })}
               >
                 <X />
               </button>
@@ -290,9 +373,10 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
               <h3>{nameFa(personRefs[0]?.display_name)}</h3>
               {!personRefs.length && (
                 <p>
-                  {data.value
-                    ? "تصویر مرجع در این نسخه پیدا نشد."
-                    : "در حال دریافت…"}
+                  {portraits.error ||
+                    (portraits.value
+                      ? "تصویر مرجع در این نسخه پیدا نشد."
+                      : "در حال دریافت…")}
                 </p>
               )}
               {personRefs.map((r) => (
@@ -309,9 +393,34 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
                     <bdi>{r.session_id}</bdi>
                   </small>
                   <p>{reasonFa(r.reason)}</p>
-                  {r.status === "accepted" && <ReferenceAppearances reference={r.reference_id} version={route.version} go={go} />}
+                  {!fixture && r.status === "accepted" && (
+                    <ReferenceAppearances
+                      reference={r.reference_id}
+                      version={route.version}
+                      go={go}
+                    />
+                  )}
                 </figure>
               ))}
+              {portraits.value?.next_cursor && (
+                <button
+                  onClick={() =>
+                    setDetailPage({
+                      person: route.person!,
+                      after: portraits.value!.next_cursor!,
+                    })
+                  }
+                >
+                  تصاویر بعدی
+                </button>
+              )}
+              {detailQuery.has("after") && (
+                <button
+                  onClick={() => setDetailPage({ person: "", after: "" })}
+                >
+                  نخستین تصاویر
+                </button>
+              )}
             </div>
           </aside>
         )}

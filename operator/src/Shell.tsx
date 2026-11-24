@@ -15,7 +15,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { api, date, Gallery, Link, Recording, Route, View } from "./types";
+import { api, date, PeoplePage, Link, Recording, Route, View } from "./types";
 import { useData } from "./hooks";
 import { nameFa } from "./Gallery";
 
@@ -239,17 +239,11 @@ function GlobalSearch({ go }: { go: Link }) {
   const [query, setQuery] = useState(""),
     [err, setErr] = useState("");
   const q = query.trim().toLowerCase();
-  const gallery = useData<Gallery>("/api/identity/gallery"),
+  const gallery = useData<PeoplePage>(
+      "/api/identity/people?limit=6&q=" + encodeURIComponent(q),
+    ),
     recordings = useData<{ items: Recording[] }>("/api/operator/recordings");
-  const people = [
-    ...new Map(
-      (gallery.value?.references || []).map((r) => [r.person_id, r]),
-    ).values(),
-  ]
-    .filter((r) =>
-      (r.person_id + " " + nameFa(r.display_name)).toLowerCase().includes(q),
-    )
-    .slice(0, 6);
+  const people = gallery.value?.people || [];
   const clips = (recordings.value?.items || [])
     .filter((r) =>
       (r.asset_id + " " + r.source_id + " " + r.occurrence_id)
@@ -310,7 +304,7 @@ function GlobalSearch({ go }: { go: Link }) {
             key={r.person_id}
             onClick={() => go({ view: "gallery", person: r.person_id })}
           >
-            <img src={r.portrait_url} alt="" />
+            <img src={r.thumbnail_url} loading="lazy" alt="" />
             {nameFa(r.display_name)}
           </button>
         ))}

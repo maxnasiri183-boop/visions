@@ -52,6 +52,14 @@ def media_file(relative, mime):
 
 @app.before_request
 def mutations():
+    if os.environ.get("GALLERY_FIXTURE") == "1" and request.path.startswith("/api/"):
+        allowed = (
+            "/api/identity/versions",
+            "/api/identity/people",
+            "/api/identity/references/",
+        )
+        if request.method != "GET" or not request.path.startswith(allowed):
+            abort(403)
     if (
         request.method in ("POST", "PUT", "PATCH", "DELETE")
         and request.headers.get("X-Visions-Action") != "operator"
@@ -74,7 +82,14 @@ def headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     if request.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "private, no-store"
+        thumbnail = request.path.startswith(
+            "/api/identity/references/"
+        ) and request.path.endswith("/thumbnail")
+        response.headers["Cache-Control"] = (
+            "private, max-age=86400"
+            if thumbnail and response.status_code in (200, 304)
+            else "private, no-store"
+        )
     return response
 
 
@@ -102,7 +117,9 @@ def server_error(error):
 @app.get("/health")
 def health():
     ready = (DIST / "index.html").is_file()
-    return jsonify(ready=ready, revision=os.getenv("VISIONS_REVISION", "unrecorded")), 200 if ready else 503
+    return jsonify(
+        ready=ready, revision=os.getenv("VISIONS_REVISION", "unrecorded")
+    ), 200 if ready else 503
 
 
 @app.route("/api/operator/sources/<source>/speed", methods=["GET", "POST"])
@@ -113,8 +130,12 @@ def source_speed(source):
         abort(404)
     choices = [0.5, 1.0, 2.0]
     path = DATA / "feed.sqlite"
-    with closing(sqlite3.connect(path.as_uri() + "?mode=rw", uri=True, timeout=4)) as db:
-        if not db.execute("SELECT 1 FROM sqlite_master WHERE name='replay_controls'").fetchone():
+    with closing(
+        sqlite3.connect(path.as_uri() + "?mode=rw", uri=True, timeout=4)
+    ) as db:
+        if not db.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='replay_controls'"
+        ).fetchone():
             abort(503)
         if request.method == "POST":
             body = request.get_json(silent=True)
@@ -122,14 +143,29 @@ def source_speed(source):
             if type(value) not in (int, float) or value not in choices:
                 abort(400)
             with db:
-                db.execute("""INSERT INTO replay_controls VALUES(?,?,?) ON CONFLICT(source_id)
-                           DO UPDATE SET speed=excluded.speed,changed_at=excluded.changed_at""", (source, value, time.time()))
-        wanted = db.execute("SELECT speed FROM replay_controls WHERE source_id=?", (source,)).fetchone()
-        active = db.execute("""SELECT speed FROM occurrences WHERE source_id=? AND state='processing'
-                             ORDER BY scheduled_at DESC LIMIT 1""", (source,)).fetchone()
-        last = db.execute("SELECT speed FROM occurrences WHERE source_id=? ORDER BY scheduled_at DESC LIMIT 1", (source,)).fetchone()
-    return jsonify(source_id=source, configured=wanted[0] if wanted else (last[0] if last else 1.0),
-                   current=active[0] if active else None, choices=choices)
+                db.execute(
+                    """INSERT INTO replay_controls VALUES(?,?,?) ON CONFLICT(source_id)
+                           DO UPDATE SET speed=excluded.speed,changed_at=excluded.changed_at""",
+                    (source, value, time.time()),
+                )
+        wanted = db.execute(
+            "SELECT speed FROM replay_controls WHERE source_id=?", (source,)
+        ).fetchone()
+        active = db.execute(
+            """SELECT speed FROM occurrences WHERE source_id=? AND state='processing'
+                             ORDER BY scheduled_at DESC LIMIT 1""",
+            (source,),
+        ).fetchone()
+        last = db.execute(
+            "SELECT speed FROM occurrences WHERE source_id=? ORDER BY scheduled_at DESC LIMIT 1",
+            (source,),
+        ).fetchone()
+    return jsonify(
+        source_id=source,
+        configured=wanted[0] if wanted else (last[0] if last else 1.0),
+        current=active[0] if active else None,
+        choices=choices,
+    )
 
 
 @app.get("/api/operator/recordings")
@@ -441,6 +477,13 @@ def example_image(index):
 
 @app.get("/")
 def index():
+    if os.environ.get("GALLERY_FIXTURE") == "1":
+        html = (
+            (DIST / "index.html")
+            .read_text()
+            .replace("<html ", '<html data-gallery-fixture="true" ', 1)
+        )
+        return app.response_class(html, mimetype="text/html")
     return send_from_directory(DIST, "index.html")
 
 

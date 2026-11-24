@@ -6,6 +6,9 @@ export type Route = {
   frame?: number;
   face?: string;
   person?: string;
+  q?: string;
+  status?: string;
+  after?: string;
   version?: string;
   originOcc?: string;
   originFrame?: number;
@@ -74,6 +77,11 @@ export type Reference = {
   portrait_url: string;
   session_id: string;
 };
+export type PersonCard = Pick<
+  Reference,
+  "person_id" | "display_name" | "status"
+> & { reference_count: number; thumbnail_url: string };
+export type PeoplePage = { people: PersonCard[]; next_cursor: string | null };
 export type Version = {
   calibration?: { split_hashes?: Record<string, string> };
   version: string;

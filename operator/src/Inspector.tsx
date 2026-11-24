@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useData } from "./hooks";
-import { date, Decision, Face, fa, Frame, Link, Recording } from "./types";
+import { api, date, Decision, Face, fa, Frame, Link, Recording } from "./types";
 import { nameFa } from "./Gallery";
 
 export function Inspector({
@@ -118,6 +118,8 @@ export function Evidence({
   const [revision, setRevision] = useState(0),
     [technical, setTechnical] = useState(false),
     [copy, setCopy] = useState("");
+  const [pairCheck, setPairCheck] = useState("");
+  const [checking, setChecking] = useState(false);
   const path =
     "/api/identity/observations/" + face.detection_id + "?review=" + revision;
   const query = useData<Decision>(path, 1500, pending);
@@ -194,7 +196,10 @@ export function Evidence({
             : titles[state]}
         </p>
         {known && <h3>{nameFa(result.display_name)}</h3>}
-        {result && ["matched", "unknown", "poor_quality"].includes(result.state) && <small>نتیجهٔ ثبت‌شدهٔ پردازش ویدئو</small>}
+        {result &&
+          ["matched", "unknown", "poor_quality"].includes(result.state) && (
+            <small>نتیجهٔ ثبت‌شدهٔ پردازش ویدئو</small>
+          )}
         {state === "unknown" && (
           <small>
             {result?.score == null
@@ -267,6 +272,44 @@ export function Evidence({
           جزئیات فنی
           <ChevronDown />
         </summary>
+        {known && (
+          <div>
+            <button
+              disabled={checking}
+              onClick={async () => {
+                setChecking(true);
+                setPairCheck("");
+                try {
+                  const response = await api<{
+                    score: number;
+                    detection_id: string;
+                    reference_id: string;
+                  }>(
+                    "/api/identity/observations/" +
+                      face.detection_id +
+                      "/compare",
+                    { method: "POST" },
+                  );
+                  if (
+                    response.detection_id !== face.detection_id ||
+                    response.reference_id !== result.reference_id
+                  )
+                    throw Error();
+                  setPairCheck(
+                    "شباهت محاسبه‌شده در این لحظه: " + fa(response.score, 6),
+                  );
+                } catch {
+                  setPairCheck("محاسبه انجام نشد؛ دوباره تلاش کنید.");
+                } finally {
+                  setChecking(false);
+                }
+              }}
+            >
+              محاسبهٔ مجدد شباهت دو تصویر
+            </button>
+            <p role="status">{pairCheck}</p>
+          </div>
+        )}
         <p>شناسهٔ مشاهده</p>
         <code>{face.detection_id}</code>
         <div className="row">
@@ -303,7 +346,10 @@ export function Evidence({
             ],
             ["نسخهٔ مدل", result?.model || "—"],
             ["پیش‌پردازش", result?.preprocessing || "—"],
-            ["نسخهٔ گالری", result?.version == null ? "—" : fa(Number(result.version))],
+            [
+              "نسخهٔ گالری",
+              result?.version == null ? "—" : fa(Number(result.version)),
+            ],
             ["اطمینان تشخیص چهره", fa(face.confidence, 4)],
             ["موضوع کافکا", face.topic],
             [
