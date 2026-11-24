@@ -86,6 +86,8 @@ def exercise(data, base, browser_path):
                 "Array.from(document.querySelectorAll('.pair img')).every(i=>i.naturalWidth>0)"
             )
             assert page.evaluate("document.body.scrollWidth") <= width
+            if width < 761:
+                page.get_by_role("button", name="بستن شناسایی چهره").click()
             for mode in ["window", "fullscreen"]:
                 if mode == "fullscreen":
                     page.get_by_role("button", name="تمام‌صفحه").click()
@@ -101,6 +103,8 @@ def exercise(data, base, browser_path):
             page.screenshot(
                 path=str(screen_dir / f"verified-review-{width}.png"), full_page=True
             )
+            if width < 761:
+                page.get_by_role("button", name="شناسایی چهره", exact=True).click()
             page.get_by_text("جزئیات فنی", exact=True).click()
             expect(page.locator("pre")).to_contain_text(selected[2])
             tech = json.loads(page.locator("pre").inner_text())
@@ -113,6 +117,8 @@ def exercise(data, base, browser_path):
                 .startswith(b"\x89PNG")
             )
             pts = page.locator("video").evaluate("(v)=>v.currentTime")
+            if width < 761:
+                page.get_by_role("button", name="بستن شناسایی چهره").click()
             page.locator(".box:not(.active)").focus()
             page.keyboard.press("Enter")
             expect(page.get_by_text("ناشناخته", exact=True)).to_be_visible()
@@ -120,6 +126,8 @@ def exercise(data, base, browser_path):
             assert (
                 abs(page.locator("video").evaluate("(v)=>v.currentTime") - pts) < 0.002
             )
+            if width < 761:
+                page.get_by_role("button", name="بستن شناسایی چهره").click()
             page.locator(".box:not(.active)").click()
             page.get_by_role("button", name="پروندهٔ مرجع").click()
             page.wait_for_function(
@@ -128,6 +136,8 @@ def exercise(data, base, browser_path):
             page.get_by_role("button", name="بازگشت به صفحهٔ قبل").click()
             expect(page.locator(".box.active")).to_be_visible()
             assert "face=" + selected[2] in page.url
+            if width < 761:
+                page.get_by_role("button", name="بستن شناسایی چهره").click()
             page.get_by_role("button", name="پخش", exact=True).click()
             page.wait_for_function(
                 "!document.querySelector('video').paused && document.querySelector('video').currentTime>0.1"

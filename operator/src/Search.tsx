@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { Image, Upload } from "lucide-react";
+import { bestObservation, Hit, Results } from "./appearances";
+import { useEffect, useRef, useState } from "react";
 import { api, date, fa, Link, post, pts } from "./types";
 import { useData } from "./hooks";
 type Probe = {
@@ -11,31 +13,6 @@ type Probe = {
     thumbnail_url: string;
     reason?: string;
   }[];
-};
-type Hit = {
-  occurrence_id: string;
-  frame_index: number;
-  detection_id: string;
-  media_pts_s: number;
-  score: number;
-  thumbnail_url: string;
-  observed_utc?: string;
-};
-type Group = {
-  asset_id?: string;
-  repeated?: boolean;
-  occurrence_id: string;
-  source_id: string;
-  first_s: number;
-  last_s: number;
-  score: number;
-  thumbnail_url: string;
-  observations: Hit[];
-};
-type Results = {
-  groups: Group[];
-  candidate_count: number;
-  match_threshold: number;
 };
 export function Search({ go }: { go: Link }) {
   const [probe, setProbe] = useState<Probe>(),
@@ -52,7 +29,21 @@ export function Search({ go }: { go: Link }) {
   const examples = useData<{ label: string; url: string }[]>(
     "/api/operator/examples",
   );
+  const active = useRef<AbortController | null>(null);
+  useEffect(() => () => active.current?.abort(), []);
+  function begin() {
+    active.current?.abort();
+    active.current = new AbortController();
+    return active.current.signal;
+  }
+  function invalidateResults() {
+    active.current?.abort();
+    setResults(undefined);
+    setWorking(false);
+    setError("");
+  }
   async function upload(file: Blob) {
+    const signal = begin();
     setWorking(true);
     setError("");
     setResults(undefined);
@@ -66,38 +57,44 @@ export function Search({ go }: { go: Link }) {
       const data = await api<Probe>("/api/identity/probes", {
         method: "POST",
         body: form,
+        signal,
       });
+      if (signal.aborted) return;
       setProbe(data);
       if (data.faces.length === 1 && !data.faces[0].reason)
         setFace(data.faces[0].face_index);
     } catch (e) {
-      setError((e as Error).message);
+      if (!signal.aborted) setError((e as Error).message);
     } finally {
-      setWorking(false);
+      if (!signal.aborted) setWorking(false);
     }
   }
   async function search() {
     if (!probe || face === undefined) return;
+    const signal = begin();
     setError("");
     setWorking(true);
     setResults(undefined);
     try {
-      if (from && to && from > to)
+      if (from && to && from >= to)
         throw Error("زمان پایان باید بعد از زمان آغاز باشد.");
-      setResults(
-        await post<Results>("/api/identity/search", {
+      const result = await post<Results>(
+        "/api/identity/search",
+        {
           probe_id: probe.probe_id,
           face_index: face,
           source_id: source || undefined,
           from_utc: from ? new Date(from).toISOString() : undefined,
           to_utc: to ? new Date(to).toISOString() : undefined,
           limit: 25,
-        }),
+        },
+        signal,
       );
+      if (!signal.aborted) setResults(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (!signal.aborted) setError((e as Error).message);
     } finally {
-      setWorking(false);
+      if (!signal.aborted) setWorking(false);
     }
   }
   function open(hit: Hit) {
@@ -120,9 +117,14 @@ export function Search({ go }: { go: Link }) {
   return (
     <>
       <div className="page-head">
-        <div>
-          <h1>جست‌وجو با تصویر</h1>
-          <p>یک چهره را در ویدیوهای ثبت‌شده پیدا کنید.</p>
+        <div className="page-title">
+          <span className="heading-icon">
+            <Image />
+          </span>
+          <div>
+            <h1>جست‌وجو با تصویر</h1>
+            <p>یک چهره را در ویدیوهای ثبت‌شده پیدا کنید.</p>
+          </div>
         </div>
       </div>
       <div className="search-layout">
@@ -153,9 +155,7 @@ export function Search({ go }: { go: Link }) {
             {probe ? (
               <img src={probe.image_url} alt="عکس بارگذاری‌شده" />
             ) : (
-              <span className="upload-icon" aria-hidden="true">
-                ↑
-              </span>
+              <Upload aria-hidden="true" />
             )}
             <strong>
               {probe ? "تغییر تصویر" : "انتخاب یا رها کردن تصویر"}
@@ -198,7 +198,7 @@ export function Search({ go }: { go: Link }) {
                       aria-pressed={face === p.face_index}
                       onClick={() => {
                         setFace(p.face_index);
-                        setResults(undefined);
+                        invalidateResults();
                       }}
                     >
                       <img src={p.thumbnail_url} alt="" />
@@ -220,7 +220,7 @@ export function Search({ go }: { go: Link }) {
               value={source}
               onChange={(e) => {
                 setSource(e.target.value);
-                setResults(undefined);
+                invalidateResults();
               }}
             >
               <option value="">همهٔ منابع</option>
@@ -237,7 +237,7 @@ export function Search({ go }: { go: Link }) {
                 value={from}
                 onChange={(e) => {
                   setFrom(e.target.value);
-                  setResults(undefined);
+                  invalidateResults();
                 }}
               />
             </label>
@@ -248,7 +248,7 @@ export function Search({ go }: { go: Link }) {
                 value={to}
                 onChange={(e) => {
                   setTo(e.target.value);
-                  setResults(undefined);
+                  invalidateResults();
                 }}
               />
             </label>
@@ -289,9 +289,7 @@ export function Search({ go }: { go: Link }) {
                 </p>
               )}
               {groups.map((g, i) => {
-                const best = g.observations.reduce((a, b) =>
-                  a.score >= b.score ? a : b,
-                );
+                const best = bestObservation(g);
                 return (
                   <article className="hit" key={best.detection_id}>
                     <img src={g.thumbnail_url} alt="چهره در ویدیو" />
@@ -310,7 +308,9 @@ export function Search({ go }: { go: Link }) {
                         {pts(g.last_s)}
                         {g.repeated ? " · بازپخش محتوای تکراری" : ""}
                       </small>
-                      <p>امتیاز شباهت {fa(g.score, 3)}</p>
+                      <p>
+                        امتیاز شباهت <bdi dir="ltr">{fa(g.score, 3)}</bdi>
+                      </p>
                       <button onClick={() => open(best)}>
                         باز کردن لحظهٔ ویدیو ←
                       </button>

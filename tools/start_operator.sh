@@ -2,17 +2,19 @@
 # Start the local A100 pilot with its existing private catalog and durable run.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+ui_only=0
 case "${1:-}" in
   "") rebuild=0 ;;
   --build) rebuild=1 ;;
-  *) echo "Usage: tools/start_operator.sh [--build]" >&2; exit 2 ;;
+  --ui-only) ui_only=1; rebuild=1 ;;
+  *) echo "Usage: tools/start_operator.sh [--build | --ui-only]" >&2; exit 2 ;;
 esac
 export OPERATOR_DATA_HOST="${OPERATOR_DATA_HOST:-$PWD/private/operator}"
 export YUNET_MODEL_HOST="${YUNET_MODEL_HOST:-$PWD/private/yunet.onnx}"
 export REVIEW_UID="$(id -u)" REVIEW_GID="$(id -g)"
 export OPERATOR_JAVA_IMAGE="${OPERATOR_JAVA_IMAGE:-visions-detector-gpu-operator:local}"
 export FEED_KEEP_LIVE="${FEED_KEEP_LIVE:-1}" FEED_RUN_HOURS="${FEED_RUN_HOURS:-24}"
-if [[ -z ${FEED_RUN_ID:-} ]]; then
+if [[ $ui_only == 0 && -z ${FEED_RUN_ID:-} ]]; then
   FEED_RUN_ID=$(python3 - "$OPERATOR_DATA_HOST" <<'PY'
 from pathlib import Path
 import sqlite3
@@ -31,6 +33,16 @@ docker_cli=(docker)
 if ! docker info >/dev/null 2>&1; then
   docker_cli=(sudo --preserve-env=OPERATOR_DATA_HOST,YUNET_MODEL_HOST,OPERATOR_JAVA_IMAGE,REVIEW_UID,REVIEW_GID,FEED_RUN_ID,FEED_KEEP_LIVE,FEED_RUN_HOURS,FEED_SPEED,FEED_WORKERS,FEED_RETENTION_SECONDS,FEED_QUEUE_PER_SOURCE,FEED_MIN_FREE_BYTES docker)
 fi
+ui=("${docker_cli[@]}" compose --env-file .env -f compose.operator.yaml)
+build_ui() {
+  (cd operator && npm ci --prefer-offline --no-audit --no-fund && npm run build)
+  "${ui[@]}" build operator-ui
+}
+if ((ui_only)); then
+  build_ui
+  "${ui[@]}" up --no-deps --no-build -d --wait operator-ui
+  exit
+fi
 for required in "$OPERATOR_DATA_HOST/catalog.json" "$OPERATOR_DATA_HOST/models/sface.onnx" "$YUNET_MODEL_HOST" .env; do
   if [[ ! -s "$required" ]]; then
     echo "Missing $required. Prepare the private pilot as described in docs/operator.md." >&2
@@ -39,7 +51,6 @@ for required in "$OPERATOR_DATA_HOST/catalog.json" "$OPERATOR_DATA_HOST/models/s
 done
 base=("${docker_cli[@]}" compose --env-file .env -f compose.yaml -f compose.monitoring.yaml)
 feed=("${docker_cli[@]}" compose --env-file .env -f compose.feed.yaml -f compose.feed.monitoring.yaml)
-ui=("${docker_cli[@]}" compose --env-file .env -f compose.operator.yaml)
 if ! "${docker_cli[@]}" image inspect visions-review:latest >/dev/null 2>&1; then
   "${base[@]}" build review
 fi
@@ -51,8 +62,7 @@ if ((rebuild)) || ! "${docker_cli[@]}" image inspect visions-operator-worker:loc
   "${feed[@]}" build operator-feeder operator-worker
 fi
 if ((rebuild)) || ! "${docker_cli[@]}" image inspect visions-operator:local >/dev/null 2>&1; then
-  (cd operator && npm ci --no-audit --no-fund && npm run build)
-  "${ui[@]}" build operator-ui
+  build_ui
 fi
 "${feed[@]}" up -d --no-build --wait --wait-timeout 180 operator-feeder operator-worker operator-exporter
 "${ui[@]}" up -d --no-build --wait

@@ -3,6 +3,7 @@ import { api } from "./types";
 export function useData<T>(
   url: string | null,
   interval = 0,
+  repeat?: (value?: T) => boolean,
 ): { url: string | null; value?: T; error?: string } {
   const [result, setResult] = useState<{
     url: string;
@@ -14,8 +15,9 @@ export function useData<T>(
     const ctl = new AbortController();
     let timer = 0;
     async function load() {
+      let value: T | undefined;
       try {
-        const value = await api<T>(url!, { signal: ctl.signal });
+        value = await api<T>(url!, { signal: ctl.signal });
         if (!ctl.signal.aborted) setResult({ url: url!, value });
       } catch {
         if (!ctl.signal.aborted)
@@ -25,7 +27,7 @@ export function useData<T>(
             error: "ارتباط با سرویس برقرار نشد.",
           }));
       }
-      if (!ctl.signal.aborted && interval)
+      if (!ctl.signal.aborted && interval && (!repeat || repeat(value)))
         timer = window.setTimeout(load, interval);
     }
     void load();
@@ -33,6 +35,20 @@ export function useData<T>(
       ctl.abort();
       clearTimeout(timer);
     };
-  }, [url, interval]);
+  }, [url, interval, repeat]);
   return result.url === url ? result : { url };
+}
+
+export function useMedia(query: string) {
+  const [matches, setMatches] = useState(
+    () => window.matchMedia(query).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const update = () => setMatches(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [query]);
+  return matches;
 }
