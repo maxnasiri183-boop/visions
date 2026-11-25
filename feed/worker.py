@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import signal
+import sqlite3
 import subprocess
 import threading
 import time
@@ -17,7 +18,7 @@ from backend import (
     visibility_loop,
     search_visibility_loop,
 )
-from db import DATA, budget, connect, initialize, local, state
+from db import DATA, budget, busy, connect, initialize, local, state
 
 STOP = threading.Event()
 CHILDREN = set()
@@ -240,7 +241,13 @@ def slot(slot_id):
                 state(db, label, "storage_guard", "Reserved disk headroom reached")
                 STOP.wait(1)
                 continue
-            row = claim(db, os.environ["FEED_RUN_ID"])
+            try:
+                row = claim(db, os.environ["FEED_RUN_ID"])
+            except sqlite3.OperationalError as error:
+                if not busy(error):
+                    raise
+                STOP.wait(0.12)
+                continue
             if not row:
                 state(db, label, "idle")
                 STOP.wait(0.12)
@@ -371,14 +378,27 @@ def run():
     workers = int(os.environ.get("FEED_WORKERS", "1"))
     if not 1 <= workers <= 8:
         raise ValueError("FEED_WORKERS must be 1 through 8")
+    supervise(db, workers)
+
+
+def supervise(db, workers):
     with ThreadPoolExecutor(max_workers=workers) as pool:
         jobs = [pool.submit(slot, i) for i in range(workers)]
-        while not STOP.is_set():
-            for job in jobs:
-                if job.done():
-                    job.result()
-            state(db, "worker", "active")
-            STOP.wait(0.5)
+        try:
+            while not STOP.is_set():
+                for job in jobs:
+                    if job.done():
+                        job.result()
+                        if not STOP.is_set():
+                            raise RuntimeError(
+                                "Detector slot returned while worker was active"
+                            )
+                state(db, "worker", "active")
+                STOP.wait(0.5)
+        finally:
+            # Release the resident JVMs and slots before the executor joins them,
+            # including when a fatal supervisor or slot error makes Compose restart.
+            stop()
 
 
 if __name__ == "__main__":
