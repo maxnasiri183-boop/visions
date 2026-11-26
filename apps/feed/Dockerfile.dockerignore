@@ -1,10 +1,4 @@
 **
-!apps/
-!apps/feed/
 !apps/feed/pyproject.toml
-!apps/feed/src/
-!apps/feed/src/visions_feed/
 !apps/feed/src/visions_feed/*.py
-!infra/
-!infra/starrocks/
 !infra/starrocks/detections.sql
