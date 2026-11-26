@@ -1,7 +1,7 @@
 """Incrementally embed observations, decide against one frozen gallery and retain lineage."""
 
 import argparse
-from collections import OrderedDict
+from contextlib import closing
 from datetime import datetime
 import json
 import os
@@ -16,33 +16,7 @@ import numpy as np
 
 from . import core as c
 from .matching import ExactGallery
-
-
-class Decoder:
-    def __init__(self):
-        self.clips = OrderedDict()
-
-    def frame(self, occurrence_id, path, index):
-        retained = str(c.checked_path(path))
-        key = (occurrence_id, retained)
-        if key not in self.clips:
-            if len(self.clips) == 8:
-                self.clips.popitem(last=False)[1][0].release()
-            cap = cv2.VideoCapture(
-                retained, cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 1]
-            )
-            self.clips[key] = (cap, -1, None)
-        self.clips.move_to_end(key)
-        cap, before, image = self.clips[key]
-        if before != index:
-            if before + 1 != index and not cap.set(cv2.CAP_PROP_POS_FRAMES, index):
-                raise ValueError("Cannot seek source frame")
-            ok, image = cap.read()
-            if not ok:
-                self.clips.pop(key)[0].release()
-                raise ValueError("Could not decode retained source")
-            self.clips[key] = (cap, index, image)
-        return image
+from .media import Decoder
 
 
 def attached(db):
@@ -175,7 +149,6 @@ def main():
     if not once:
         heartbeat.unlink(missing_ok=True)
     last_heartbeat = 0.0
-    decoder = Decoder()
     gallery = ExactGallery()
     c.engines()  # Fail startup if the model is missing or its hash differs.
     cv2.setNumThreads(args.opencv_threads)
@@ -185,40 +158,41 @@ def main():
         with c.connect() as db:
             db.executescript(sightings.SCHEMA)
     after, last_sweep = 0, 0
-    while not stopping:
-        try:
-            with c.connect() as db:
-                attached(db)
-                if time.monotonic() - last_sweep >= 10:
-                    # Clear retained evidence by occurrence as the feed's retention job expires it.
-                    db.execute(
-                        "DELETE FROM indexed WHERE occurrence_id IN (SELECT occurrence_id FROM feed.occurrences WHERE state='expired')"
-                    )
-                    c.expire_probes(db, 100)
-                    db.commit()
-                    last_sweep = time.monotonic()
-                    after = 0
-                rows = batch(db, after)
-                if rows:
-                    process(db, rows, decoder, gallery)
-                    after = rows[-1]["sequence"]
-                if pilot:
-                    db.commit()
-                    progressed = sightings.advance(db)
-                else:
-                    progressed = False
-                if not rows and not progressed:
-                    if once:
-                        return
-                    time.sleep(0.12)
-                if not once and time.monotonic() - last_heartbeat >= 3:
-                    heartbeat.touch()
-                    last_heartbeat = time.monotonic()
-        except (FileNotFoundError, sqlite3.OperationalError) as exc:
-            if once:
-                raise
-            logging.warning("Recognition worker waiting: %s", exc)
-            time.sleep(1)
+    with closing(Decoder()) as decoder:
+        while not stopping:
+            try:
+                with c.connect() as db:
+                    attached(db)
+                    if time.monotonic() - last_sweep >= 10:
+                        # Clear retained evidence by occurrence as the feed's retention job expires it.
+                        db.execute(
+                            "DELETE FROM indexed WHERE occurrence_id IN (SELECT occurrence_id FROM feed.occurrences WHERE state='expired')"
+                        )
+                        c.expire_probes(db, 100)
+                        db.commit()
+                        last_sweep = time.monotonic()
+                        after = 0
+                    rows = batch(db, after)
+                    if rows:
+                        process(db, rows, decoder, gallery)
+                        after = rows[-1]["sequence"]
+                    if pilot:
+                        db.commit()
+                        progressed = sightings.advance(db)
+                    else:
+                        progressed = False
+                    if not rows and not progressed:
+                        if once:
+                            return
+                        time.sleep(0.12)
+                    if not once and time.monotonic() - last_heartbeat >= 3:
+                        heartbeat.touch()
+                        last_heartbeat = time.monotonic()
+            except (FileNotFoundError, sqlite3.OperationalError) as exc:
+                if once:
+                    raise
+                logging.warning("Recognition worker waiting: %s", exc)
+                time.sleep(1)
 
 
 if __name__ == "__main__":
