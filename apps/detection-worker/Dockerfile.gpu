@@ -1,0 +1,20 @@
+FROM gradle:8.14.3-jdk21 AS build
+USER root
+ENV GRADLE_USER_HOME=/tmp/gradle
+WORKDIR /src
+COPY . .
+RUN --mount=type=cache,target=/tmp/gradle gradle --no-daemon --max-workers=2 -Pcuda=true :detection-worker:installDist
+
+FROM eclipse-temurin:21-jre-noble AS java
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="/opt/java/openjdk/bin:${PATH}"
+# CUDA and cuDNN already ship in the base image. Fetch FFmpeg from Ubuntu.
+RUN apt-get -o Dir::Etc::sourcelist=sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- update \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates fontconfig \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=java /opt/java/openjdk /opt/java/openjdk
+COPY --from=build /src/apps/detection-worker/build/install/detection-worker /opt/worker
+ARG VISIONS_REVISION=unrecorded
+LABEL org.opencontainers.image.revision=$VISIONS_REVISION
+ENTRYPOINT ["/opt/worker/bin/detection-worker"]

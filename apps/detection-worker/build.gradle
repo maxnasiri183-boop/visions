@@ -6,8 +6,11 @@ dependencies {
     implementation 'org.apache.kafka:kafka-clients:3.9.1'
     implementation platform('software.amazon.awssdk:bom:2.31.78')
     implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:regions'
+    implementation 'software.amazon.awssdk:sdk-core'
     runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
 }
-application { mainClass = 'visions.DetectionWorker' }
+application { mainClass = 'visions.worker.DetectionWorker' }
 
 dependencies { testImplementation 'junit:junit:4.13.2' }

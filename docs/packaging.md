@@ -11,3 +11,7 @@ Run deployment commands with the repository's `tools/compose` launcher. It ancho
 | `monitoring/` | `infra/monitoring/` | Prometheus, Grafana and the Docker collector consume tracked files. Dashboard and metrics data remain in the existing named volumes. |
 
 See the [Docker Compose merge guide](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/).
+
+## JVM build
+
+The root Gradle build maps the logical projects `:detection-worker`, `:contracts` and `:vision-onnx` onto `apps/detection-worker`, `libs/contracts` and `libs/vision-onnx`. Run `gradle :detection-worker:installDist` with JDK 21 and Gradle 8.14.3, or build the Dockerfile under the application from the repository context. Use `-Pcuda=true` for ONNX Runtime GPU. The generated launcher runs `visions.worker.DetectionWorker`. The old JVM main delegates to it. Contracts expose the detection record. The inference library exposes YuNet and its ONNX Runtime exception type. The worker owns S3, Kafka and their client dependencies. Tests use the standard module `src/test/java` source sets. [Gradle multi-project builds](https://docs.gradle.org/current/userguide/multi_project_builds.html) · [Java Library plugin](https://docs.gradle.org/current/userguide/java_library_plugin.html)

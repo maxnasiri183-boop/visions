@@ -1,2 +1,5 @@
 rootProject.name = 'visions'
 include 'contracts', 'vision-onnx', 'detection-worker'
+project(':contracts').projectDir = file('libs/contracts')
+project(':vision-onnx').projectDir = file('libs/vision-onnx')
+project(':detection-worker').projectDir = file('apps/detection-worker')

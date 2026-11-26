@@ -1,4 +1,7 @@
-package visions;
+package visions.worker;
+
+import visions.Detection;
+import visions.YuNet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

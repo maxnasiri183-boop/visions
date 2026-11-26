@@ -1,4 +1,4 @@
-package visions;
+package visions.worker;
 
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;

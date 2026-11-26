@@ -1,4 +1,4 @@
-package visions;
+package visions.worker;
 
 import java.nio.charset.StandardCharsets;
 import org.junit.Test;

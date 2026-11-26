@@ -1,4 +1,6 @@
-package visions;
+package visions.worker;
+
+import visions.YuNet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
