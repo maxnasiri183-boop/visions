@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visions-review"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "boto3==1.40.76", "botocore>=1.40.76,<1.41", "kafka-python==2.2.15",
+  "PyMySQL==1.1.2", "Pillow==11.3.0", "Flask==3.1.2", "waitress==3.0.2",
+]
+
+[project.scripts]
+visions-review = "visions_review.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+visions_review = ["static/*"]

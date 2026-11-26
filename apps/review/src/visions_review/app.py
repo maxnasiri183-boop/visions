@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import os
 import re
 import subprocess
 import threading
@@ -16,13 +17,13 @@ from flask import Flask, abort, jsonify, request, send_file
 from PIL import Image
 from waitress import serve
 
-import acceptance as trace
+from . import evidence as trace
 
 app = Flask(__name__, static_folder="static")
 app.config.update(
     MAX_CONTENT_LENGTH=2048, TRUSTED_HOSTS=["localhost", "127.0.0.1", "review", "[::1]"]
 )
-private = Path("private").resolve()
+private = Path(os.getenv("PRIVATE", "private")).resolve()
 state = private / ".review"
 media = state / "media"
 clip = private / "feed.mkv"
@@ -367,13 +368,13 @@ def jobs():
     return jsonify(source=source), 202
 
 
-if __name__ == "__main__":
+def main():
+    from .operations import operations
+
     initialize()
-    try:
-        from operations import operations
-    except ModuleNotFoundError as exc:
-        if exc.name != "operations":
-            raise
-    else:
-        app.register_blueprint(operations)
+    app.register_blueprint(operations)
     serve(app, host="0.0.0.0", port=8091, threads=8)
+
+
+if __name__ == "__main__":
+    main()

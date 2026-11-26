@@ -1,0 +1,12 @@
+**
+!apps/
+!apps/review/
+!apps/review/pyproject.toml
+!apps/review/src/
+!apps/review/src/visions_review/
+!apps/review/src/visions_review/*.py
+!apps/review/src/visions_review/static/
+!apps/review/src/visions_review/static/*
+!infra/
+!infra/starrocks/
+!infra/starrocks/detections.sql

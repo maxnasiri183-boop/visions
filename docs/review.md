@@ -26,7 +26,7 @@ On a fresh deployment, choose **New run** in Review. The first job provisions th
 
 ```sh
 python3 -m venv .venv
-.venv/bin/pip install -r tools/requirements-review.txt
+.venv/bin/pip install ./apps/review
 .venv/bin/python tools/acceptance.py --speed 1
 ```
 

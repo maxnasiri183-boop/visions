@@ -77,7 +77,7 @@ services:
   review:
     build:
       context: .
-      dockerfile: web/Dockerfile
+      dockerfile: apps/review/Dockerfile
     init: true
     restart: unless-stopped
     user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"

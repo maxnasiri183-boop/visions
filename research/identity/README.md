@@ -4,6 +4,8 @@ The identity worker aligns each recorded detection using its five YuNet landmark
 
 The pinned SFace model comes from OpenCV Zoo at commit `48b10fa505aeb51fbd127fc60a5c660040e823b7`. Its SHA-256 is `0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79`. The worker checks both model hashes at startup. The preprocessing version is `opencv4.11-alignCrop-5pt-112-L2-v1`. Size, inter-eye spacing, exposure and local-detail checks precede embedding. The initial 0.363 cosine cutoff comes from OpenCV's LFW example. [OpenCV source](https://github.com/opencv/opencv_zoo/tree/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_recognition_sface) · [OpenCV benchmark thresholds](https://docs.opencv.org/4.x/d0/dd4/tutorial_dnn_face.html)
 
+Install the runtime and offline commands together from the repository root with `python -m pip install ./apps/operator ./research/identity`. For container-based evaluation build the operator Dockerfile with `--target research`.
+
 ## Enrollment and decisions
 
 One person can have multiple eligible reference portraits. Uploads with zero or multiple faces, insufficient size or failed image quality are retained in the draft with the rejection reason. Publication atomically snapshots eligible reference IDs, the model, preprocessing, quality policy, calibration provenance, identification threshold and search threshold. The first recognition decision records the exact version, winning eligible reference and cosine score. Replay of a detection ID preserves that decision after later versions are published. A changed gallery needs its own calibration to make performance claims.
