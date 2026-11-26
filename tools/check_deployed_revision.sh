@@ -23,7 +23,7 @@ assert json.load(urlopen(ui+'/health',timeout=5))['revision']==sys.argv[1]
 assets=re.findall(r'"(/assets/[^"]+)"',urlopen(ui,timeout=5).read().decode())
 assert len(assets)>=2
 for asset in assets:
-    assert urlopen(ui+asset,timeout=5).read()==(Path('operator/dist') / asset.lstrip('/')).read_bytes(),asset
+    assert urlopen(ui+asset,timeout=5).read()==(Path('apps/operator/src/visions_operator/dist') / asset.lstrip('/')).read_bytes(),asset
 dash=json.load(urlopen('http://127.0.0.1:13000/api/dashboards/uid/visions-operator',timeout=5))['dashboard']
 assert [p['title'] for p in dash['panels'][:2]]==['Frames per second','Face observations per second']
 print('PASS · served operator bundle, health revision and provisioned rate panels')

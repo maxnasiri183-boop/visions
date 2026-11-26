@@ -20,8 +20,8 @@ mkdir -p private/simulator-cache
 docker compose -f compose.rtsp.yaml up -d
 docker build --target worker --build-arg DETECTOR_IMAGE=visions-detector-gpu:latest \
   -t visions-feed-rtsp:local -f apps/feed/Dockerfile .
-(cd operator && npm run build)
-docker build -t visions-operator:detections -f operator/Dockerfile .
+(cd apps/operator/frontend && npm ci && npm run build)
+docker build -t visions-operator:detections -f apps/operator/Dockerfile .
 docker compose --env-file .env --env-file private/operator-rtsp.env \
   -f compose.feed.yaml -f compose.feed.monitoring.yaml \
   -f compose.feed.rtsp.yaml -f deploy/t4/feed.yaml up -d --no-build --wait

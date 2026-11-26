@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build"
+    "build": "tsc --noEmit && vite build --outDir ../src/visions_operator/dist --emptyOutDir"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

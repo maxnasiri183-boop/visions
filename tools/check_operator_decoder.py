@@ -15,7 +15,6 @@ from operator_capacity_report import distribution
 
 def compare(root, limit):
     os.environ["OPERATOR_ROOT"] = str(root)
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from identity.worker import Decoder
 
     feed = root / "feed.sqlite"

@@ -7,7 +7,6 @@ import shutil
 from urllib.request import urlopen
 
 from . import core as c
-from .corpus import SUBJECTS, build
 
 SFACE = (
     "https://media.githubusercontent.com/media/opencv/opencv_zoo/"
@@ -37,6 +36,8 @@ def main():
     modeldir.mkdir(parents=True, mode=0o700, exist_ok=True)
     download(SFACE, modeldir / "sface.onnx", c.MODEL_SHA)
     if args.research_vidtimit:
+        from .corpus import SUBJECTS, build
+
         base = c.ROOT / "research/archives"
         base.mkdir(parents=True, mode=0o700, exist_ok=True)
         download(
