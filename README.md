@@ -22,6 +22,8 @@ python vision.py verify samples/huggingface/reference.jpg samples/huggingface/di
 
 On Windows, activate with `.venv\Scripts\activate`. Use the filenames printed by the sampler if their extensions differ.
 
+After preparing the Review demo assets, run `python vision.py detect private/astronaut.png` to test detection offline. The command verifies and uses the local YuNet model in `private/yunet.onnx`.
+
 For the Kaggle example, run `python samples.py kaggle` and use the files in `samples/kaggle/` with the same commands. KaggleHub downloads the dataset to its cache before the sampler selects three photos. Each source contains a version of Labeled Faces in the Wild, so samples from the two sources may overlap. These examples demonstrate inference. To measure performance, use held-out labeled pairs and report false matches and missed matches at the chosen threshold.
 
 ## Data and models
@@ -36,6 +38,8 @@ Use the --threshold option on verify to adjust the default cosine cutoff of 0.36
 ## Browser workspace
 
 Play the fixed clip, inspect a frame and its stored crop, trace an observation through Kafka and SQL, or replay it from the [Review workspace](docs/review.md).
+
+On a single Tesla T4, run `./tools/start_workspace.sh --t4` to use CUDA for browser Review jobs. The [T4 walkthrough](docs/gpu.md#tesla-t4-review-workspace) includes the two reference frames and the per-job GPU check.
 
 The [Operations guide](docs/operations.md) covers live pipeline rates, ingestion backlog, stage timings and Grafana. The [A100 profile](docs/gpu.md) verifies the execution provider inside the container. The [sustained benchmark](docs/benchmark.md) measures complete labeled feeds across simultaneous streams.
 

@@ -1,7 +1,10 @@
 """Detect faces in a photo or verify a pair of portraits."""
 import argparse
 import json
+from hashlib import sha256
 from pathlib import Path
+
+from tools.fixture import PRIVATE, YUNET_SHA256
 
 
 def model(repo, filename):
@@ -15,9 +18,14 @@ def detect(path):
     if image is None:
         raise ValueError(f"Cannot read {path}")
     height, width = image.shape[:2]
-    detector = cv2.FaceDetectorYN.create(
-        model("face_detection_yunet", "face_detection_yunet_2023mar.onnx"),
-        "", (width, height))
+    local_model = PRIVATE / "yunet.onnx"
+    if local_model.is_file():
+        if sha256(local_model.read_bytes()).hexdigest() != YUNET_SHA256:
+            raise ValueError(f"Checksum mismatch: {local_model}")
+        weights = str(local_model)
+    else:
+        weights = model("face_detection_yunet", "face_detection_yunet_2023mar.onnx")
+    detector = cv2.FaceDetectorYN.create(weights, "", (width, height))
     _, faces = detector.detect(image)
     return image, [] if faces is None else faces
 

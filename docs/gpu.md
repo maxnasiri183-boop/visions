@@ -1,6 +1,24 @@
-# A100 detector job
+# GPU face detection
 
 The GPU job uses the same FFmpeg feed, YuNet preprocessing, model checksum, confidence threshold, NMS and event format as the CPU worker. The GPU image uses the Java ONNX Runtime GPU artifact at 1.20.0, CUDA 12.8, and cuDNN 9. The NVIDIA kernel driver belongs on the host.
+
+## Tesla T4 Review workspace
+
+On the six-core i5-8400 with 15 GiB of system RAM, start the single-job Review workspace from the checkout. Docker needs access to NVIDIA device 0 through CDI. The launcher tests that access before building the images. On first use it prepares the demo assets and uses FFmpeg inside the Review image to generate the clip.
+
+```sh
+./tools/start_workspace.sh --t4
+```
+
+Open [Review](http://127.0.0.1:8091/) on the host. Choose **New run** and select frame **5** at **1×**. Expect one face and a verified crop. Start a second new run on frame **15** for a verified empty frame. Check the first inference in each new job with the following command.
+
+```sh
+grep -H 'ort_profile_cuda_kernels=' private/.review/review-*.log
+```
+
+The CUDA kernel count must be positive. The same line reports any CPU kernels. Replaying an existing observation can use its saved manifest and skip inference.
+
+This profile starts Review, Kafka, MinIO and StarRocks. Review runs one Java detector job at a time on GPU 0 with reusable input buffers, a 512 MiB Java heap cap and two processors visible to the JVM. CUDA allocations and native memory are additional. These settings are a starting point for this host. The job logs record per-frame timing for measuring throughput locally.
 
 ## Verify the host and container
 
