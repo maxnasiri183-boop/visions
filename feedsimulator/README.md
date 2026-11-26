@@ -8,7 +8,7 @@ Cleanup starts below 24 GiB free on the operator volume and stops at 30 GiB. It 
 
 ## Run on the prepared VM
 
-From the repository root, bring up the existing backend, recognition and monitoring services first. The VM's private Compose overrides select its NVIDIA runtime and local images. The RTSP environment uses a distinct run name and camera map.
+From the repository root, bring up the existing backend, recognition and monitoring services first. The tracked T4 deployment overlays select its NVIDIA runtime and local images. The RTSP environment uses a distinct run name and camera map.
 
 ```dotenv
 FEED_RUN_ID=t4-rtsp
@@ -21,13 +21,13 @@ docker compose -f compose.rtsp.yaml up -d
 docker build --target python --build-arg REVIEW_IMAGE=visions-review-t4:local \
   -t visions-feed-rtsp:local -f feed/Dockerfile .
 (cd operator && npm run build)
-docker build -t visions-operator:rtsp -f operator/Dockerfile .
+docker build -t visions-operator:detections -f operator/Dockerfile .
 docker compose --env-file .env --env-file private/operator-rtsp.env \
-  -f compose.feed.yaml -f compose.feed.monitoring.yaml -f private/compose.feed.vm.yaml \
-  -f compose.feed.rtsp.yaml -f private/compose.feed.rtsp-image.yaml up -d --no-build --wait
+  -f compose.feed.yaml -f compose.feed.monitoring.yaml \
+  -f compose.feed.rtsp.yaml -f deploy/t4/feed.yaml up -d --no-build --wait
 docker compose --env-file .env --env-file private/operator-rtsp.env \
-  -f compose.operator.yaml -f private/compose.operator.vm.yaml -f private/compose.ui.rtsp.yaml \
-  up -d --no-build --no-deps --wait operator-ui
+  -f compose.operator.yaml -f deploy/t4/operator.yaml \
+  up -d --no-build --no-deps --wait operator-ui recognition
 ```
 
 The operator UI listens on VM loopback port 8092. Choose a camera in Live, or select a retained segment in Recordings. The operator dashboard in Grafana on port 13000 exposes retained duration, skipped frames, disk space and cleanup state.
