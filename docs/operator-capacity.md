@@ -7,6 +7,7 @@ These trials exercise the operator playlist, scheduled file playout, CUDA YuNet 
 Start the regular Compose backends and build the operator feeder and worker images. Prepare the private research corpus with a published gallery and a held-out upload. Use an empty directory for the trials. The host Python environment needs the same OpenCV, Flask and numerical dependencies as the recognition service, and Docker access directly or through noninteractive sudo. The harness uses the private Docker network and does not open another browser port.
 
 ```bash
+.venv/bin/python -m pip install ./apps/operator
 .venv/bin/python tools/operator_capacity.py \
   --source "$PWD/private/capacity-corpus-v1" \
   --yunet "$PWD/private/yunet.onnx" \

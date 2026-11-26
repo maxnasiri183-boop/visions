@@ -15,7 +15,7 @@ ssh -N -o ExitOnForwardFailure=yes \
 
 ## Prepare and deploy
 
-From this checkout on the A100, retain the existing private directory, Compose project names, private environment file and named volumes. Prepare the original research pilot first on a new installation. [Baseline preparation](../identity/README.md)
+From this checkout on the A100, retain the existing private directory, Compose project names, private environment file and named volumes. Prepare the original research pilot first on a new installation. [Baseline preparation](../research/identity/README.md)
 
 ```bash
 cd /home/ubuntu/visions

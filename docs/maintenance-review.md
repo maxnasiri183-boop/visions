@@ -1,5 +1,7 @@
 # T4 maintenance review
 
+Paths below describe the baseline reviewed here. Use the [current component and command map](packaging.md) for the packaged layout.
+
 Baseline on the T4 VM was main at `97ef061`, with one worktree, no local-only commits, no staged or unstaged source and no untracked source. Production images reported `unrecorded`. The feed Python, identity package, operator server, compiled browser assets and Review app matched the checkout by file comparison. Mounts and image IDs were recorded alongside a verified local Git bundle under the private VM baseline directory. The models, databases, environment files and footage belong to the VM.
 
 ## Ownership and priorities

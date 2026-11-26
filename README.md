@@ -1,7 +1,10 @@
-# Vision starter
+# Visions
 
-[What runs, where it lives and how to deploy it](docs/packaging.md)
-A CPU-based Python sample for detecting faces with YuNet and comparing two aligned face embeddings with SFace. Detection returns pixel coordinates from the upper-left corner. Verification expects exactly one detected face per image and returns a cosine similarity and a match decision.
+Visions ingests file or RTSP video, publishes face detections through Kafka to StarRocks, and serves retained footage and gallery matches in a Persian operator workspace. Engineering Review and Grafana expose the pipeline evidence and metrics.
+
+- **Run a workspace.** Start the fixed-clip engineering workspace with `tools/start_workspace.sh`. For the two-camera operator deployment, use the [RTSP setup and storage guide](apps/feed-simulator/README.md).
+- **Find a component.** The [packaging guide](docs/packaging.md) maps each command to its source, dependencies and deployment. The [contributor guide](AGENTS.md) explains where new code belongs.
+- **Try the standalone photo example.** The CPU sample below detects faces with YuNet and compares two aligned face embeddings with SFace.
 
 ## File feed and StarRocks
 
@@ -56,4 +59,4 @@ Watch a private source, inspect a face against a versioned reference gallery, or
 
 Open a real enrollment portrait, follow a matching face into its recording, inspect the frozen decision and SQL evidence, then change the source speed and watch Kafka and SQL rates in Grafana. The [laptop walkthrough and deployment runbook](docs/portrait-replay.md) includes the SSH command, a separate 300,000-person synthetic browsing fixture and release verification.
 
-The active research gallery contains 28 enrolled people from VidTIMIT. The private import adds 102 independently recorded studio clips. The [corpus and evaluation report](docs/vidtimit43.md) lists download and publication commands, the frozen threshold, and held-out results including false identifications.
+The published VidTIMIT research trial used 28 enrolled people and 102 independently recorded studio clips. The [corpus and evaluation report](docs/vidtimit43.md) lists download and publication commands, the frozen threshold, and held-out results including false identifications.

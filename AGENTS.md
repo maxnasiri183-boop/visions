@@ -8,3 +8,10 @@ Before a deployment, compare the checkout, image revision labels and actual moun
 * One component owns each operator interaction or selection state. Share navigation and presentation contracts across views. Keep independent evaluation oracles. [Thinking in React](https://react.dev/learn/thinking-in-react)
 * A source supplies video. An occurrence identifies one airing. A frame is addressed by occurrence and index and carries media PTS. Each detected face has its own detection ID. Its observation joins geometry, crop and publication evidence. A recognition decision freezes the gallery version, winning reference and score. A person can have multiple references. An appearance groups a camera-local sequence of observations.
 * Keep service configuration and storage provisioning under deployment ownership. Keep runtime clients alongside the capability that uses them. Preserve Compose projects, volumes, mounts, trust boundaries and private data on upgrades.
+
+## Where new code belongs
+
+- Put an executable, its build assets and its own tests in `apps/<name>/`. The operator React build and its serving API ship together. Keep Kafka, S3, SQL and filesystem clients with the application that calls them.
+- Add a JVM library to `libs/` when it has a named consumer and a public contract. Register its logical name in `settings.gradle`. Install Python applications from their `pyproject.toml` and exercise them from outside the checkout.
+- Put Compose files, environment wiring, provisioning and dashboards in `infra/`. Use `tools/compose` with canonical paths to anchor project and storage resolution. Keep credentials, media, models and databases outside Git.
+- Put offline experiments under `research/` and cross-application commands and acceptance checks in `tools/`. Keep an existing public launcher when moving its implementation. The [component and command map](docs/packaging.md) lists the current owners.
