@@ -1,3 +1,1 @@
-opencv-python-headless>=4.10,<5
-huggingface-hub>=0.25,<2
-kagglehub>=0.3,<2
+research/portraits/requirements.txt

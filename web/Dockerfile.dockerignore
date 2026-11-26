@@ -1,12 +1,1 @@
-**
-!tools/
-!tools/acceptance.py
-!tools/requirements-review.txt
-!infra/
-!infra/starrocks/
-!infra/starrocks/detections.sql
-!web/
-!web/*.py
-!web/requirements.txt
-!web/static/
-!web/static/**
+../apps/review/Dockerfile.dockerignore
