@@ -173,13 +173,27 @@ def recordings():
     before = request.args.get("before", 1e20, type=float)
     source = request.args.get("source", "")
     with closing(feed()) as db:
+        live_run = os.environ.get("OPERATOR_LIVE_RUN") if request.args.get("live") == "1" else None
+        if live_run:
+            sources = [r[0] for r in db.execute("SELECT DISTINCT source_id FROM occurrences WHERE run_id=? ORDER BY 1",(live_run,))]
+            camera = source or (sources[0] if sources else "")
+            now = time.time()
+            # Allow time for segment closure, GPU detection and identity lookup.
+            delay = 8
+            rows = db.execute(f"""SELECT {OCC} FROM occurrences WHERE source_id=? AND run_id=?
+                AND state NOT IN ('expired','expiring') AND scheduled_at<=? ORDER BY scheduled_at DESC LIMIT 1""",
+                (camera,live_run,now-delay))
+            pulse = db.execute("SELECT state,heartbeat_at FROM service_state WHERE service=?",("capture:"+camera,)).fetchone()
+            status = pulse[0] if pulse and now-pulse[1]<12 else "disconnected"
+            return jsonify(items=[dict(r) for r in rows],sources=sources,camera=camera,
+                           connection=status,server_time=now,delay=delay)
         where = "AND source_id=?" if source else ""
         args = (before, source) if source else (before,)
         items = [
             dict(r)
             for r in db.execute(
                 f"""SELECT {OCC} FROM occurrences WHERE scheduled_at<?
-              AND last_frame>=0 AND state!='expired' {where} ORDER BY scheduled_at DESC LIMIT 60""",
+              AND (last_frame>=0 OR session_id LIKE 'rtsp-%') AND state NOT IN ('expired','expiring') {where} ORDER BY scheduled_at DESC LIMIT 60""",
                 args,
             )
         ]
@@ -242,9 +256,18 @@ def frames(occ):
             )
         }
         if items:
+            ident = DATA / "identity.sqlite"
+            decision_join = ""
+            fields = "NULL AS identity_state,NULL AS identity_name"
+            if ident.is_file():
+                db.execute("ATTACH DATABASE ? AS ident", (ident.as_uri()+"?mode=ro",))
+                decision_join = (" LEFT JOIN ident.decisions d USING(detection_id) "
+                                 "LEFT JOIN ident.refs r ON d.reference_id=r.reference_id ")
+                fields = "d.state AS identity_state,CASE WHEN d.state='matched' THEN r.display_name END AS identity_name"
             for row in db.execute(
-                """SELECT detection_id,frame_index,event_json,topic,partition_id,kafka_offset,
-                 latest_offset,sql_visible_at FROM observations WHERE occurrence_id=? AND frame_index BETWEEN ? AND ?
+                f"""SELECT detection_id,frame_index,event_json,topic,partition_id,kafka_offset,
+                 latest_offset,sql_visible_at,{fields} FROM observations {decision_join}
+                 WHERE occurrence_id=? AND frame_index BETWEEN ? AND ?
                  ORDER BY frame_index,detection_id""",
                 (occ, start, max(items)),
             ):
@@ -253,6 +276,39 @@ def frames(occ):
                 obs.update(box=event["bbox_xywh"], confidence=event["confidence"])
                 items[row["frame_index"]]["faces"].append(obs)
         return jsonify(items=list(items.values()), at=at)
+
+
+@app.get("/api/operator/detections")
+def detections():
+    camera = request.args.get("source", "")
+    verdict = request.args.get("state", "")
+    if verdict not in ("", "pending", "matched", "unknown", "poor_quality", "error"):
+        abort(400)
+    cursor = request.args.get("before", 2**63-1, type=int)
+    if not 0 <= cursor <= 2**63-1:
+        abort(400)
+    run = os.getenv("OPERATOR_LIVE_RUN", "")
+    with closing(feed()) as db:
+        identity = DATA / "identity.sqlite"
+        joins = ""
+        status, name, version, score = "'pending'", "NULL", "NULL", "NULL"
+        if identity.is_file():
+            db.execute("ATTACH DATABASE ? AS ident", (identity.as_uri()+"?mode=ro",))
+            joins = "LEFT JOIN ident.decisions d USING(detection_id) LEFT JOIN ident.refs r USING(reference_id)"
+            status, name = "coalesce(d.state,'pending')", "CASE WHEN d.state='matched' THEN r.display_name END"
+            version, score = "d.version", "d.score"
+        rows = db.execute(f"""SELECT b.rowid AS cursor,b.detection_id,b.occurrence_id,b.frame_index,o.source_id,
+                o.scheduled_at+f.media_pts_s/o.speed AS observed_at,{status} AS state,
+                {name} AS name,{version} AS version,{score} AS score
+            FROM observations b JOIN occurrences o USING(occurrence_id)
+            JOIN frames f USING(occurrence_id,frame_index) {joins}
+            WHERE b.rowid<? AND o.state NOT IN ('expired','expiring') AND (?='' OR o.run_id=?)
+            AND (?='' OR o.source_id=?) AND (?='' OR {status}=?)
+            ORDER BY b.rowid DESC LIMIT 49""",
+            (cursor,run,run,camera,camera,verdict,verdict)).fetchall()
+        sources = [r[0] for r in db.execute("SELECT DISTINCT source_id FROM occurrences WHERE (?='' OR run_id=?) ORDER BY 1",(run,run))]
+        return jsonify(items=[dict(r) for r in rows[:48]],sources=sources,
+                       next_cursor=rows[47]["cursor"] if len(rows)>48 else None)
 
 
 @app.get("/api/operator/crops/<identity>")
@@ -491,6 +547,11 @@ def index():
             .replace("<html ", '<html data-gallery-fixture="true" ', 1)
         )
         return app.response_class(html, mimetype="text/html")
+    if os.getenv("IDENTITY_FIRST_PILOT") == "1":
+        html = (DIST / "index.html").read_text().replace(
+            "<html ", '<html data-identity-pilot="1" ', 1
+        )
+        return app.response_class(html, mimetype="text/html")
     return send_from_directory(DIST, "index.html")
 
 
@@ -518,6 +579,8 @@ def create_app():
     from identity.api import bp
 
     app.register_blueprint(bp)
+    from identity.sighting_api import bp as sighting_bp
+    app.register_blueprint(sighting_bp)
     return app
 
 

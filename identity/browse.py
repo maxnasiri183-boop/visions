@@ -137,7 +137,8 @@ def people(db, scope, query, status, after, limit):
             exclude = "AND (id_key<? OR id_key>=?)"
             args.extend((prefix, prefix + chr(0x10FFFF)))
         rows = db.execute(
-            f"""SELECT person_id,display_name,status,reference_count,substr(chosen,2) ref,{col} sort_key
+            f"""SELECT person_id,display_name,status,reference_count,substr(chosen,2) ref,{col} sort_key,
+                         (SELECT face_path FROM reference_features WHERE reference_id=substr(chosen,2)) face_path
             FROM gallery_cards WHERE scope=? AND filter=? AND {col}>=? AND {col}<?
             AND ({col},person_id)>(?,?) {exclude} ORDER BY {col},person_id LIMIT ?""",
             (*args, limit + 1 - len(out)),
@@ -161,7 +162,8 @@ def people(db, scope, query, status, after, limit):
             display_name=r["display_name"],
             status=r["status"],
             reference_count=r["reference_count"],
-            thumbnail_url="/api/identity/references/" + r["ref"] + "/thumbnail",
+            thumbnail_url="/api/identity/references/" + r["ref"] + "/face-thumbnail"
+            if r["face_path"] or r["status"] == "accepted" else None,
         )
         for _, r in out[:limit]
     ]
@@ -176,7 +178,7 @@ def references(db, scope, person, after="", limit=32):
     )
     args = (person, after, scope) if scope else (person, after)
     rows = db.execute(
-        f"""SELECT r.*,f.model,f.preprocessing,f.quality_policy FROM refs r JOIN reference_features f USING(reference_id)
+        f"""SELECT r.*,f.face_path,f.model,f.preprocessing,f.quality_policy FROM refs r JOIN reference_features f USING(reference_id)
                   WHERE r.person_id=? AND r.reference_id>? {restriction} ORDER BY r.reference_id LIMIT ?""",
         (*args, limit + 1),
     ).fetchall()
@@ -187,14 +189,8 @@ def references(db, scope, person, after="", limit=32):
 
 
 def thumbnail(ref):
-    with core.connect() as db:
-        row = db.execute(
-            "SELECT portrait_path FROM refs WHERE reference_id=?", (ref,)
-        ).fetchone()
-    if not row:
-        raise KeyError("Reference not found")
-    original = core.checked_path(row[0])
-    directory = core.ROOT / "reference-thumbnails"
+    original = core.checked_path(core.reference_face(ref))
+    directory = core.ROOT / "face-thumbnails"
     directory.mkdir(mode=0o700, exist_ok=True)
     target = directory / (ref + ".jpg")
     if not target.is_file():

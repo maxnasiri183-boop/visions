@@ -157,9 +157,9 @@ export function Evidence({
         <ArrowLeftRight className="comparison-symbol" aria-hidden="true" />
         <figure>
           <div className="portrait">
-            {known && result?.portrait_url ? (
+            {known && result?.face_url ? (
               <img
-                src={result.face_url || result.portrait_url}
+                src={result.face_url}
                 alt="تصویر مرجع"
               />
             ) : (

@@ -477,7 +477,7 @@ def browser_profile(args):
                 api_requests=len(api),
                 api_wire_bytes=sum(x["wire"] for x in api),
                 portraits=sum(
-                    x["path"].endswith(("/portrait", "/thumbnail")) for x in assets
+                    x["path"].endswith(("/face", "/face-thumbnail", "/portrait", "/thumbnail")) for x in assets
                 ),
                 gallery_body_bytes=sum(
                     x["body"]

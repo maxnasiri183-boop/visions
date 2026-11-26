@@ -4,6 +4,7 @@ import argparse
 from collections import OrderedDict
 from datetime import datetime
 import json
+import os
 import logging
 from pathlib import Path
 import signal
@@ -178,6 +179,11 @@ def main():
     gallery = ExactGallery()
     c.engines()  # Fail startup if the model is missing or its hash differs.
     cv2.setNumThreads(args.opencv_threads)
+    from . import sightings
+    pilot = os.getenv("IDENTITY_FIRST_PILOT") == "1"
+    if pilot:
+        with c.connect() as db:
+            db.executescript(sightings.SCHEMA)
     after, last_sweep = 0, 0
     while not stopping:
         try:
@@ -196,9 +202,14 @@ def main():
                 if rows:
                     process(db, rows, decoder, gallery)
                     after = rows[-1]["sequence"]
-                elif once:
-                    return
+                if pilot:
+                    db.commit()
+                    progressed = sightings.advance(db)
                 else:
+                    progressed = False
+                if not rows and not progressed:
+                    if once:
+                        return
                     time.sleep(0.12)
                 if not once and time.monotonic() - last_heartbeat >= 3:
                     heartbeat.touch()

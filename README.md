@@ -6,6 +6,10 @@ A CPU-based Python sample for detecting faces with YuNet and comparing two align
 
 The first Java 21 milestone replays a local clip at a configurable speed and traces one selected face through S3 and Kafka to a StarRocks primary-key row. The acceptance runner replays the same observation and compares the stored crop pixel by pixel. [راهنمای فارسی اجرا و بازبینی](docs/first-feed.fa.md)
 
+## T4 RTSP cameras
+
+The [feed simulator guide](feedsimulator/README.md) covers the two looping cameras, disk-based video retention, live face overlays and IRDB recognition on the T4 VM.
+
 ## Run the Python sample
 
 From this directory with Python 3.10 or newer, run the following commands. Internet access is needed to fetch models and sample photos on first use.

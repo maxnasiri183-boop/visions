@@ -163,7 +163,7 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
           </span>
           <div>
             <h1>گالری مرجع</h1>
-            <p>تصاویر ثبت‌نام و نسخه‌های منتشرشده</p>
+            <p>چهره‌های مرجع و نسخه‌های منتشرشده</p>
           </div>
         </div>
         {route.person ? (
@@ -317,13 +317,13 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
                 aria-pressed={r.person_id === route.person}
                 onClick={() => showPerson(r.person_id)}
               >
-                <img
+                {r.thumbnail_url && <img
                   src={r.thumbnail_url}
                   loading="lazy"
                   width="144"
                   height="144"
-                  alt={"تصویر ثبت‌نام " + nameFa(r.display_name)}
-                />
+                  alt={"چهرهٔ مرجع " + nameFa(r.display_name)}
+                />}
                 <strong>{nameFa(r.display_name)}</strong>
                 <small>
                   {fa(r.reference_count)} تصویر ثبت‌نام ·{" "}
@@ -393,22 +393,22 @@ export function GalleryPage({ route, go }: { route: Route; go: Link }) {
               )}
               {personRefs.map((r) => (
                 <figure key={r.reference_id}>
-                  <a
-                    href={r.portrait_url}
+                  {r.face_url && <a
+                    href={r.face_url}
                     target="_blank"
                     rel="noreferrer"
                     aria-label={
-                      "باز کردن عکس مرجع در اندازهٔ اصلی · " +
+                      "باز کردن چهرهٔ مرجع · " +
                       nameFa(r.display_name)
                     }
                   >
                     <img
-                      src={r.portrait_url}
-                      alt={"عکس ثبت‌نام " + nameFa(r.display_name)}
+                      src={r.face_url}
+                      alt={"چهرهٔ مرجع " + nameFa(r.display_name)}
                     />
-                  </a>
+                  </a>}
                   <figcaption>
-                    عکس ثبت‌نام ·{" "}
+                    چهرهٔ مرجع ·{" "}
                     {r.status === "accepted" ? "پذیرفته‌شده" : "ردشده"}
                   </figcaption>
                   <small>

@@ -8,7 +8,7 @@ The pinned SFace model comes from OpenCV Zoo at commit `48b10fa505aeb51fbd127fc6
 
 One person can have multiple eligible reference portraits. Uploads with zero or multiple faces, insufficient size or failed image quality are retained in the draft with the rejection reason. Publication atomically snapshots eligible reference IDs, the model, preprocessing, quality policy, calibration provenance, identification threshold and search threshold. The first recognition decision records the exact version, winning eligible reference and cosine score. Replay of a detection ID preserves that decision after later versions are published. A changed gallery needs its own calibration to make performance claims.
 
-Identity and quality outcomes are separate from detection confidence. A best reference outside the cutoff yields an unknown decision. Poor-quality and failed observations have no usable vector. A detected observation awaiting the worker has a pending state. The gallery exposes the full enrollment portrait and its actual detected face crop.
+Identity and quality outcomes are separate from detection confidence. A best reference outside the cutoff yields an unknown decision. Poor-quality and failed observations have no usable vector. A detected observation awaiting the worker has a pending state. The gallery serves cropped reference faces. Enrollment stores the detected crop and its embedding. Original IRDB inputs stay under the Git-ignored `feed/sample_irdb/` directory.
 
 ## Search
 

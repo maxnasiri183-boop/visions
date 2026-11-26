@@ -21,18 +21,19 @@ def capture(db, run):
     rr = db.execute("SELECT * FROM runs WHERE run_id=?", (run,)).fetchone()
     if not rr:
         raise RuntimeError("Waiting for feeder run")
+    through = rr["stop_at"] if rr["stop_at"] is not None else now
     totals = dict(
         db.execute("SELECT * FROM run_totals WHERE run_id=?", (run,)).fetchone()
     )
     details = []
     for row in db.execute(
         """SELECT source_id,count(*) AS occurrences,sum(last_frame+1) AS durable_frames,
-        sum(CASE WHEN state IN ('expired','complete') THEN frame_count ELSE 0 END) AS completed_expected,
-        sum(CASE WHEN state IN ('expired','complete') THEN last_frame+1 ELSE 0 END) AS completed_actual,
+        sum(CASE WHEN state IN ('expired','complete','recorded') THEN frame_count-coalesce((SELECT frames FROM recording_skips s WHERE s.occurrence_id=occurrences.occurrence_id),0) ELSE 0 END) AS completed_expected,
+        sum(CASE WHEN state IN ('expired','complete','recorded') THEN last_frame+1 ELSE 0 END) AS completed_actual,
         max(scheduled_at+duration_s/speed) AS scheduled_until,
-        sum(CASE WHEN state NOT IN ('expired','complete') THEN 1 ELSE 0 END) AS outstanding
+        sum(CASE WHEN state NOT IN ('expired','complete','recorded') THEN 1 ELSE 0 END) AS outstanding
         FROM occurrences WHERE run_id=? AND scheduled_at<? GROUP BY source_id""",
-        (run, rr["stop_at"]),
+        (run, through),
     ):
         item = dict(row)
         source = db.execute(
@@ -45,12 +46,12 @@ def capture(db, run):
     pending = db.execute(
         """SELECT sum(ob.sql_visible_at IS NULL),sum(ob.search_state IS NULL) FROM observations ob
         JOIN occurrences oc USING(occurrence_id) WHERE run_id=? AND oc.scheduled_at<?""",
-        (run, rr["stop_at"]),
+        (run, through),
     ).fetchone()
     expired = db.execute(
         """SELECT sum(missing_sql),sum(missing_identity),sum(identity_errors) FROM expiry_counts
         JOIN occurrences USING(occurrence_id) WHERE run_id=? AND scheduled_at<?""",
-        (run, rr["stop_at"]),
+        (run, through),
     ).fetchone()
     return {
         "expired_missing_sql": expired[0] or 0,
@@ -93,7 +94,7 @@ def monitor():
         ):
             current.add("disk_below_reserve")
 
-        ended = now >= rr["stop_at"] or rr["state"] == "finished"
+        ended = rr["stop_at"] is not None and (now >= rr["stop_at"] or rr["state"] == "finished")
         if last is not None and now - last > INTERVAL * 3:
             current.add("unobserved_interval")
         if samples == 0 and now - rr["created_at"] > STALL:

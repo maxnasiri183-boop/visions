@@ -1,10 +1,11 @@
-export type View = "live" | "recordings" | "search" | "gallery" | "health";
+export type View = "detections" | "identified" | "live" | "recordings" | "search" | "gallery" | "health";
 export type Route = {
   view: View;
   source?: string;
   occ?: string;
   frame?: number;
   face?: string;
+  appearance?: string;
   person?: string;
   q?: string;
   status?: string;
@@ -32,6 +33,8 @@ export type Recording = {
   synthetic: number;
 };
 export type Face = {
+  identity_state?: string;
+  identity_name?: string;
   detection_id: string;
   frame_index: number;
   confidence: number;
@@ -74,13 +77,13 @@ export type Reference = {
   display_name: string;
   status: string;
   reason?: string;
-  portrait_url: string;
+  face_url?: string | null;
   session_id: string;
 };
 export type PersonCard = Pick<
   Reference,
   "person_id" | "display_name" | "status"
-> & { reference_count: number; thumbnail_url: string };
+> & { reference_count: number; thumbnail_url: string | null };
 export type PeoplePage = { people: PersonCard[]; next_cursor: string | null };
 export type Version = {
   calibration?: { split_hashes?: Record<string, string> };

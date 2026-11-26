@@ -1,3 +1,5 @@
+import { Detections } from "./Detections";
+import { Identified } from "./Identified";
 import { GalleryPage } from "./Gallery";
 import { Health } from "./Health";
 import React, { useEffect, useState } from "react";
@@ -13,7 +15,7 @@ function read(): Route {
   return {
     view: document.documentElement.dataset.galleryFixture
       ? "gallery"
-      : Object.hasOwn(labels, view)
+      : Object.hasOwn(labels, view) && (view!=="identified" || document.documentElement.dataset.identityPilot)
         ? view
         : "live",
     source: q.get("source") || undefined,
@@ -23,6 +25,7 @@ function read(): Route {
     q: q.get("q") || undefined,
     status: q.get("status") || undefined,
     after: q.get("after") || undefined,
+    appearance: q.get("appearance") || undefined,
     person: q.get("person") || undefined,
     version: q.get("version") || undefined,
     originOcc: q.get("originOcc") || undefined,
@@ -66,7 +69,7 @@ function App() {
         <ShellHeader route={route} go={go} />
       )}
       <main>
-        {route.view === "gallery" ? (
+        {route.view === "detections" ? <Detections route={route} go={go}/> : route.view === "identified" ? <Identified route={route} go={go}/> : route.view === "gallery" ? (
           <GalleryPage route={route} go={go} />
         ) : route.view === "health" ? (
           <Health go={go} />

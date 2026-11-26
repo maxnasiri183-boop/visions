@@ -630,7 +630,7 @@ async def photo_case(page, base, root, out, known):
     assert q["person"] == [row["person_id"]] and q["version"] == [str(row["version"])]
     panel = page.locator(".gallery-person")
     portrait = panel.locator(
-        f'img[src="/api/identity/references/{row["reference_id"]}/portrait"]'
+        f'img[src="/api/identity/references/{row["reference_id"]}/face"]'
     )
     await expect(portrait).to_be_visible()
     await expect(portrait).to_have_js_property("complete", True)

@@ -6,7 +6,7 @@
     "operator"
   ],
   "schemaVersion": 41,
-  "version": 2,
+  "version": 3,
   "timezone": "utc",
   "editable": false,
   "refresh": "5s",
@@ -1709,6 +1709,178 @@
         }
       },
       "description": "Durable observations from the current soak run."
+    },
+    {
+      "type": "timeseries",
+      "id": 28,
+      "title": "Retained recording time by camera",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 128,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_retained_recording_seconds",
+          "legendFormat": "{{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Retained recording time by camera"
+    },
+    {
+      "type": "timeseries",
+      "id": 29,
+      "title": "Frames skipped to stay live",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 128,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_intentionally_skipped_frames",
+          "legendFormat": "{{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Frames skipped to stay live"
+    },
+    {
+      "type": "timeseries",
+      "id": 30,
+      "title": "Disk-pressure cleanup active",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 136,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_retention_cleanup_active",
+          "legendFormat": "Disk-pressure cleanup active",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bool"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Disk-pressure cleanup active"
+    },
+    {
+      "type": "timeseries",
+      "id": 31,
+      "title": "Expired recordings",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "visions-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 136,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "visions_operator_expired_recordings",
+          "legendFormat": "Expired recordings",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "visions-metrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "Expired recordings"
     }
   ],
   "links": [

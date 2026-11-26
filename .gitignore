@@ -2,6 +2,8 @@
 /.env
 /.venv/
 /samples/
+/feed/sample_videos/
+/feed/sample_irdb/
 **/.gradle/
 **/build/
 **/__pycache__/

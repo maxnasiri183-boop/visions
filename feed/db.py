@@ -24,6 +24,8 @@ def initialize():
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("PRAGMA journal_size_limit=16777216")
         db.executescript("""
+        CREATE TABLE IF NOT EXISTS retention_pressure(id INTEGER PRIMARY KEY,active INTEGER NOT NULL,changed_at REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS recording_skips(occurrence_id TEXT PRIMARY KEY, frames INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS occurrences(
           occurrence_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, source_id TEXT NOT NULL,
           asset_id TEXT NOT NULL, asset_sha256 TEXT NOT NULL, session_id TEXT NOT NULL,
@@ -160,7 +162,11 @@ def budget():
     import shutil
 
     disk = shutil.disk_usage(DATA)
-    return disk.free >= int(os.environ.get("FEED_MIN_FREE_BYTES", str(24 * 1024**3)))
+    reserve = int(os.environ.get("FEED_MIN_FREE_BYTES", str(24 * 1024**3)))
+    if os.getenv("FEED_RETENTION_MODE") == "disk":
+        # Keep recording during cleanup unless the volume approaches exhaustion.
+        reserve = min(reserve, 1024**3)
+    return disk.free >= reserve
 
 
 def bounded_id(value):

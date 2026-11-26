@@ -12,6 +12,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
+from retention import pressure
 from db import DATA, connect, local, state
 
 BUCKET = "visions-operator"
@@ -61,7 +62,7 @@ def provision():
                 {
                     "ID": "OperatorOrphanExpiry",
                     "Filter": {"Tag": {"Key": "retention", "Value": "rolling"}},
-                    "Status": "Enabled",
+                    "Status": "Disabled" if os.getenv("FEED_RETENTION_MODE") == "disk" else "Enabled",
                     "Expiration": {"Days": 1},
                 }
             ]
@@ -254,7 +255,7 @@ def protect_pins(db, s3, pins):
 
 def expire():
     db, s3 = connect(), store()
-    # Only completed, owned occurrences past the retention window are eligible.
+    # Resume interrupted deletions even if free space has since recovered.
     while True:
         try:
             cutoff = time.time() - RETENTION
@@ -267,16 +268,24 @@ def expire():
             ):
                 raise ValueError("Expected up to eight pinned occurrence IDs")
             protect_pins(db, s3, pins)
+            disk_mode = os.getenv("FEED_RETENTION_MODE") == "disk"
+            if disk_mode:
+                cutoff = time.time() if pressure(db) else 0
             rows = db.execute(
-                "SELECT occurrence_id,run_id FROM occurrences WHERE "
-                "(state='complete' AND finished_at<?) OR state='expiring' ORDER BY finished_at LIMIT 24",
-                (cutoff,),
+                "SELECT occurrence_id,run_id,input_path,media_path,session_id FROM occurrences WHERE "
+                "((state IN ('complete','recorded') AND finished_at<?) OR state='expiring') "
+                "AND occurrence_id NOT IN (SELECT value FROM json_each(?)) ORDER BY scheduled_at LIMIT 24",
+                (cutoff,json.dumps(pins)),
             ).fetchall()
             rows = [row for row in rows if row["occurrence_id"] not in pins]
             for row in rows:
                 oid = row["occurrence_id"]
                 if not oid.startswith("occ-"):
                     raise ValueError("Refusing unowned retention key")
+                if disk_mode and not pressure(db) and not db.execute(
+                    "SELECT 1 FROM occurrences WHERE occurrence_id=? AND state='expiring'", (oid,)
+                ).fetchone():
+                    continue
                 offsets = db.execute(
                     "SELECT partition_id,max(latest_offset) FROM observations WHERE occurrence_id=? GROUP BY partition_id",
                     (oid,),
@@ -329,6 +338,18 @@ def expire():
                 crops = local("crops/" + oid)
                 if crops.exists():
                     shutil.rmtree(crops)
+                if row["session_id"].startswith("rtsp-") and row["input_path"].startswith("recordings/"):
+                    segment = local(row["input_path"])
+                    if segment.parent.name != row["session_id"] or segment.suffix != ".mp4":
+                        raise ValueError("Unexpected RTSP recording path")
+                    if row["media_path"] != row["input_path"]:
+                        preview = local(row["media_path"])
+                        if preview != segment.with_suffix(".play.mp4"):
+                            raise ValueError("Unexpected RTSP preview path")
+                        preview.unlink(missing_ok=True)
+                    segment.unlink(missing_ok=True)
+                    if segment.parent.exists() and not any(segment.parent.iterdir()):
+                        segment.parent.rmdir()
                 db.execute("BEGIN IMMEDIATE")
                 db.execute(
                     """INSERT OR REPLACE INTO expiry_counts SELECT ?,count(*),
@@ -350,9 +371,9 @@ def expire():
                     (row["run_id"],),
                 )
                 db.commit()
-                state(db, "retention", "active", str(RETENTION) + " s")
+                state(db, "retention", "active", "disk pressure" if disk_mode else str(RETENTION) + " s")
             prune_media(db)
-            state(db, "retention", "active", str(RETENTION) + " s")
+            state(db, "retention", "active", "disk pressure" if disk_mode else str(RETENTION) + " s")
             time.sleep(1 if rows else 8)
         except Exception as error:
             db.rollback()

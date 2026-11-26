@@ -45,7 +45,7 @@ def gallery(version=None):
             else "WHERE NOT EXISTS(SELECT 1 FROM retired_draft_refs h WHERE h.reference_id=r.reference_id)"
         )
         refs = db.execute(
-            f"""SELECT r.*,f.model,f.preprocessing,f.quality_policy FROM refs r
+            f"""SELECT r.*,f.face_path,f.model,f.preprocessing,f.quality_policy FROM refs r
             JOIN reference_features f USING(reference_id) {join} ORDER BY r.person_id,r.reference_id LIMIT 49""",
             (version,) if version else (),
         ).fetchall()
@@ -117,6 +117,7 @@ def person_record(person):
         )
 
 
+@bp.get("/references/<ref>/face-thumbnail")
 @bp.get("/references/<ref>/thumbnail")
 def portrait_thumbnail(ref):
     return image_response(browse.thumbnail(ref))
@@ -176,13 +177,7 @@ def appearances(ref):
 
 @bp.get("/references/<ref>/portrait")
 def portrait(ref):
-    with c.connect() as db:
-        row = db.execute(
-            "SELECT portrait_path FROM refs WHERE reference_id=?", (ref,)
-        ).fetchone()
-    if not row:
-        abort(404)
-    return image_response(row[0])
+    return reference_face(ref)
 
 
 @bp.get("/references/<ref>/face")
@@ -216,7 +211,7 @@ def observation(identifier):
             display_name=None,
         )
     data["portrait_url"] = (
-        "/api/identity/references/" + data["reference_id"] + "/portrait"
+        "/api/identity/references/" + data["reference_id"] + "/face"
         if data["reference_id"]
         else None
     )

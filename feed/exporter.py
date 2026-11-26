@@ -117,7 +117,7 @@ def snapshot():
         "window_seconds": WINDOW,
         "rates_window_seconds": 5,
         "disk_free_bytes": shutil.disk_usage(DATA).free,
-        "retention_seconds": int(os.environ.get("FEED_RETENTION_SECONDS", 3600)),
+        "retention_seconds": None if os.getenv("FEED_RETENTION_MODE") == "disk" else int(os.environ.get("FEED_RETENTION_SECONDS", 3600)),
     }
     population = dict(SQL_POPULATION)
     age = (
@@ -144,6 +144,11 @@ def snapshot():
             or {}
         )
         result["sources"] = []
+        rtsp = os.getenv("FEED_RETENTION_MODE") == "disk"
+        if rtsp:
+            pressure = db.execute("SELECT active FROM retention_pressure WHERE id=1").fetchone()
+            result["retention_cleanup_active"] = int(bool(pressure and pressure[0]))
+            result["expired_recordings"] = db.execute("SELECT count(*) FROM occurrences WHERE state='expired'").fetchone()[0]
         result["publication_offsets"] = {
             str(r[0]): r[1]
             for r in db.execute(
@@ -221,11 +226,12 @@ def snapshot():
             ).fetchone()[0]
             pulse = db.execute(
                 "SELECT state,heartbeat_at FROM service_state WHERE service=?",
-                ("source:" + source,),
+                (("capture:" if rtsp else "source:") + source,),
             ).fetchone()
             completed = db.execute(
                 "SELECT coalesce(sum(frame_count),0),coalesce(sum(frame_count-last_frame-1),0) "
-                "FROM occurrences WHERE run_id=? AND source_id=? AND state IN('complete','expired')",
+                "FROM occurrences WHERE run_id=? AND source_id=? AND state IN('complete','expired')"
+                + (" AND occurrence_id NOT IN (SELECT occurrence_id FROM recording_skips)" if rtsp else ""),
                 (run, source),
             ).fetchone()
             # A source with historical receipts but current completions on an incompatible worker
@@ -233,6 +239,10 @@ def snapshot():
             ingress_measured = received is not None and (
                 not rate or now - received["observed_at"] < 15
             )
+            retained = db.execute("SELECT coalesce(sum(duration_s),0) FROM occurrences WHERE run_id=? AND source_id=? AND state NOT IN ('expired','expiring')",(run,source)).fetchone()[0]
+            skipped = 0
+            if rtsp:
+                skipped = db.execute("SELECT coalesce(sum(s.frames),0) FROM recording_skips s JOIN occurrences o USING(occurrence_id) WHERE run_id=? AND source_id=?",(run,source)).fetchone()[0]
             counted = totals.get(source, {})
             result["sources"].append(
                 {
@@ -250,7 +260,8 @@ def snapshot():
                     else None,
                     "completed_expected_frames": completed[0],
                     "completed_missing_frames": completed[1],
-                    "intentionally_skipped_frames": 0,
+                    "intentionally_skipped_frames": skipped,
+                    "retained_recording_seconds": retained,
                     "observed_input_fps": decoded / 5 if ingress_measured else None,
                     "published_observations_total": counted["published"]
                     if counted
@@ -455,6 +466,7 @@ def scrape(report):
             "completed_expected_frames",
             "completed_missing_frames",
             "intentionally_skipped_frames",
+            "retained_recording_seconds",
             "target_fps",
             "observed_input_fps",
             "published_observations_total",
@@ -496,6 +508,8 @@ def scrape(report):
         "pending_sql",
         "disk_free_bytes",
         "retention_seconds",
+        "retention_cleanup_active",
+        "expired_recordings",
         "latest_searchable_at",
         "identity_available",
         "observed_at",

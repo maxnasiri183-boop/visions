@@ -1,5 +1,15 @@
 import { Face, Frame, fa } from "./types";
 
+function identityLabel(p: Face) {
+  switch (p.identity_state) {
+    case "matched": return "تطبیق · " + p.identity_name;
+    case "unknown": return "ناشناخته";
+    case "poor_quality": return "کیفیت پایین";
+    case "error": return "خطای شناسایی";
+    default: return "در حال بررسی";
+  }
+}
+
 export function FaceOverlay({
   frame,
   selected,
@@ -37,7 +47,16 @@ export function FaceOverlay({
             if (event.detail === 0) onChoose(p);
           }}
         >
-          <span>{fa(i + 1)}</span>
+          <span
+            dir="rtl"
+            style={{
+              ...(p.box[1] * fitted.height / frame.height < 24
+                ? { top: "100%", bottom: "auto" } : {}),
+              ...(p.box[0] / frame.width > 0.65 ? { right: 0, left: "auto" } : {}),
+            }}
+          >
+            {fa(i + 1)} · {identityLabel(p)}
+          </span>
         </button>
       ))}
     </div>

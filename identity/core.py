@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS decisions (
 CREATE TABLE IF NOT EXISTS reference_features (
  reference_id TEXT PRIMARY KEY REFERENCES refs(reference_id) ON DELETE CASCADE,model TEXT NOT NULL,
  preprocessing TEXT NOT NULL,quality_policy TEXT NOT NULL,bbox TEXT,face_path TEXT);
+CREATE TABLE IF NOT EXISTS reference_face_images (
+ reference_id TEXT PRIMARY KEY REFERENCES refs(reference_id) ON DELETE CASCADE, jpeg BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS observation_features (
  detection_id TEXT PRIMARY KEY REFERENCES indexed(detection_id) ON DELETE CASCADE,model TEXT NOT NULL,
  preprocessing TEXT NOT NULL,quality_policy TEXT NOT NULL);
@@ -261,7 +263,12 @@ def add_reference(raw, person, name, session):
         if db.execute("SELECT 1 FROM refs WHERE sha256=?", (digest,)).fetchone():
             raise ValueError("This image already belongs to another person or session")
         ref = uuid4().hex
-        path = save_image("references/" + ref + ".jpg", image)
+        bbox = [float(v) for v in rows[0][:4]] if len(rows) == 1 else None
+        face_path = (
+            save_image("references/" + ref + "-face.jpg", crop(image, bbox))
+            if bbox
+            else None
+        )
         db.execute(
             "INSERT INTO refs VALUES(?,?,?,?,?,?,?,?,?,?)",
             (
@@ -271,22 +278,21 @@ def add_reference(raw, person, name, session):
                 session,
                 "rejected" if reason else "accepted",
                 reason,
-                path,
+                face_path or "",
                 digest,
                 vec,
                 time.time(),
             ),
         )
-        bbox = [float(v) for v in rows[0][:4]] if len(rows) == 1 else None
-        face_path = (
-            save_image("references/" + ref + "-face.jpg", crop(image, bbox))
-            if bbox
-            else None
-        )
         db.execute(
             "INSERT INTO reference_features VALUES(?,?,?,?,?,?)",
             (ref, MODEL, PRE, POLICY, json.dumps(bbox), face_path),
         )
+        if face_path:
+            db.execute(
+                "INSERT INTO reference_face_images VALUES(?,?)",
+                (ref, checked_path(face_path).read_bytes()),
+            )
         return public_ref(
             db.execute(
                 "SELECT * FROM refs JOIN reference_features USING(reference_id) WHERE reference_id=?",
@@ -296,6 +302,9 @@ def add_reference(raw, person, name, session):
 
 
 def public_ref(row):
+    url = None
+    if row["face_path"] or row["status"] == "accepted":
+        url = "/api/identity/references/" + row["reference_id"] + "/face"
     return {
         **{
             k: row[k]
@@ -311,10 +320,8 @@ def public_ref(row):
                 "reason",
             )
         },
-        "face_url": "/api/identity/references/" + row["reference_id"] + "/face"
-        if row["status"] == "accepted"
-        else None,
-        "portrait_url": "/api/identity/references/" + row["reference_id"] + "/portrait",
+        "face_url": url,
+        "portrait_url": url,
     }
 
 
@@ -410,16 +417,17 @@ def dot(a, b):
 
 def reference_face(ref):
     with connect() as db:
-        db.execute("BEGIN IMMEDIATE")
         row = db.execute(
             "SELECT r.*,f.face_path,f.bbox FROM refs r JOIN reference_features f USING(reference_id) "
-            "WHERE reference_id=? AND status='accepted'",
+            "WHERE reference_id=?",
             (ref,),
         ).fetchone()
         if row is None:
             raise KeyError("Eligible reference not found")
         if row["face_path"] and checked_path(row["face_path"]).is_file():
             return row["face_path"]
+        if row["status"] != "accepted" or not row["portrait_path"] or row["portrait_path"] == row["face_path"]:
+            raise KeyError("Reference crop unavailable")
         # Backfill earlier enrollments from the retained portrait and check the original vector.
         img = upload_image(checked_path(row["portrait_path"]).read_bytes())
         if row["bbox"]:

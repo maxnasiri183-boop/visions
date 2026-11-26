@@ -27,9 +27,9 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
   const live = route.view === "live";
   const source = route.source || "";
   const [follow, setFollow] = useState(live && !route.occ);
-  const list = useData<{ items: Recording[]; sources: string[] }>(
-    "/api/operator/recordings?source=" + encodeURIComponent(source),
-    2000,
+  const list = useData<{ items: Recording[]; sources: string[]; camera?: string; connection?: string; delay?: number; server_time?: number }>(
+    "/api/operator/recordings?source=" + encodeURIComponent(source) + (live ? "&live=1" : ""),
+    live ? 500 : 2000,
   );
   const [chosen, setChosen] = useState<string>("");
   const newest = list.value?.items[0]?.occurrence_id;
@@ -95,19 +95,20 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
               بازگشت به لحظه قبلی
             </button>
           )}
-          {live && source && <FeedSpeed key={source} source={source} />}
+          {live && list.value?.connection && <span role="status">{({online:"متصل",connecting:"در حال اتصال",storage_guard:"کمبود فضای ذخیره‌سازی",disconnected:"قطع اتصال"} as Record<string,string>)[list.value.connection] || list.value.connection}</span>}
+          {live && source && !list.value?.camera && <FeedSpeed key={source} source={source} />}
           <label className="inline-filter">
             <Camera />
             <span className="sr">منبع</span>
             <select
-              value={source}
+              value={source || list.value?.camera || ""}
               onChange={(e) => {
                 go({ view: route.view, source:e.target.value || undefined });
                 setChosen("");
                 setFollow(live);
               }}
             >
-              <option value="">همهٔ منابع</option>
+              {!list.value?.camera && <option value="">همهٔ منابع</option>}
               {list.value?.sources.map((s) => (
                 <option key={s}>{s}</option>
               ))}
@@ -121,6 +122,7 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
       ) : rec ? (
         <Player
           key={rec.occurrence_id}
+          liveTime={list.value?.server_time !== undefined ? list.value.server_time - (list.value.delay || 0) : undefined}
           {...{ rec, route, go, follow, keep, freeze }}
           onLive={() => {
             go({ view: "live", source: route.source });
@@ -186,6 +188,7 @@ function Archive({ source, go }: { source: string; go: Link }) {
 }
 
 type PlayerProps = {
+  liveTime?: number;
   rec: Recording;
   route: Route;
   go: Link;
@@ -194,7 +197,7 @@ type PlayerProps = {
   onLive: () => void;
   freeze: (f: Frame, p?: Face) => void;
 };
-function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
+function Player({ rec, route, go, follow, keep, onLive, freeze, liveTime }: PlayerProps) {
   const v = useRef<HTMLVideoElement>(null),
     stage = useRef<HTMLDivElement>(null);
   const [clock, setClock] = useState(0),
@@ -209,9 +212,10 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
     target === undefined ? null : path + "/frames?frame=" + target,
   );
   const windowAt = Math.floor(clock / 3) * 3;
+  const cameraLive = follow && liveTime !== undefined && rec.session_id.startsWith("rtsp-");
   const timeline = useData<{ items: Frame[] }>(
-    path + (follow ? "/frames?live=1" : "/frames?at=" + windowAt),
-    rec.finished_at ? 0 : follow ? 400 : 900,
+    path + (follow && !cameraLive ? "/frames?live=1" : "/frames?at=" + windowAt),
+    follow ? 400 : rec.finished_at ? 0 : 900,
   );
   const [loaded, setLoaded] = useState<Frame[]>([]);
   useEffect(() => {
@@ -246,10 +250,16 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
   }, [ready, initial.value]);
   const liveLimit = useRef<number>();
   useLayoutEffect(() => {
-    liveLimit.current = follow ? loaded.at(-1)?.media_pts_s : undefined;
-  }, [follow, loaded]);
+    liveLimit.current = follow && !cameraLive ? loaded.at(-1)?.media_pts_s : undefined;
+  }, [cameraLive, follow, loaded]);
   useEffect(() => {
     const video = v.current;
+    if (cameraLive && video && ready && liveTime !== undefined) {
+      const wanted = Math.min(rec.duration_s - 0.01, Math.max(0, liveTime - rec.scheduled_at));
+      if (Math.abs(video.currentTime - wanted) > 0.7) seek(wanted);
+      if (!video.ended) void video.play().catch(() => setPlaying(false));
+      return;
+    }
     const end = liveLimit.current;
     if (!video || !ready || !follow || end === undefined) return;
     const first = loaded[0].media_pts_s;
@@ -258,7 +268,7 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
         video.currentTime < buffered - 1) seek(buffered);
     if (end - video.currentTime >= 0.2)
       void video.play().catch(() => setPlaying(false));
-  }, [loaded, follow, ready]);
+  }, [loaded, follow, ready, cameraLive, liveTime, rec.scheduled_at, rec.duration_s]);
   useLayoutEffect(() => {
     const s = stage.current!,
       video = v.current!;
@@ -355,7 +365,7 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
         ))}
       </div>
     ) : null;
-  const message = !f
+  const message = rec.state === "recorded" && !f ? "ویدئو ضبط شد؛ تحلیل این فریم برای حفظ پخش زنده رد شد." : !f
     ? rec.state === "failed" || rec.state === "retry"
       ? "خطا در پردازش فریم"
       : "در انتظار نتیجهٔ این فریم"
@@ -364,7 +374,7 @@ function Player({ rec, route, go, follow, keep, onLive, freeze }: PlayerProps) {
       : "برای دیدن نتیجه، یکی از چهره‌های تصویر را انتخاب کنید.";
   const trackOpen = Boolean(face && face.detection_id === appearance);
   const mobileClosed = mobile && face && dismissed === face.detection_id;
-  const age = f
+  const age = cameraLive && liveTime !== undefined ? Math.max(0, Date.now()/1000 - rec.scheduled_at - clock) : f
     ? Math.max(0, Date.now() / 1000 - Date.parse(f.ingested_at) / 1000)
     : null;
   return (

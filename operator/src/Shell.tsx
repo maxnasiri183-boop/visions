@@ -20,6 +20,8 @@ import { useData } from "./hooks";
 import { nameFa } from "./Gallery";
 
 export const labels: Record<View, string> = {
+  detections: "چهره‌های دیده‌شده",
+  identified: "افراد شناسایی‌شده",
   recordings: "بازبینی ویدئو",
   live: "پخش زنده",
   search: "جست‌وجو با تصویر",
@@ -27,6 +29,8 @@ export const labels: Record<View, string> = {
   health: "وضعیت سامانه",
 };
 const nav = [
+  { view: "detections", icon: Camera },
+  { view: "identified", icon: UserRound },
   { view: "recordings", icon: Clapperboard },
   { view: "live", icon: Radio },
   { view: "search", icon: Image },
@@ -82,7 +86,7 @@ export function ShellHeader({ route, go }: { route: Route; go: Link }) {
           Visions
         </a>
         <nav aria-label="ناوبری اصلی">
-          {nav.map(({ view, icon: Icon }) => (
+          {nav.filter(n=>n.view!=="identified" || document.documentElement.dataset.identityPilot).map(({ view, icon: Icon }) => (
             <a
               key={view}
               aria-current={route.view === view ? "page" : undefined}
@@ -304,7 +308,7 @@ function GlobalSearch({ go }: { go: Link }) {
             key={r.person_id}
             onClick={() => go({ view: "gallery", person: r.person_id })}
           >
-            <img src={r.thumbnail_url} loading="lazy" alt="" />
+            {r.thumbnail_url && <img src={r.thumbnail_url} loading="lazy" alt="" />}
             {nameFa(r.display_name)}
           </button>
         ))}
