@@ -1,6 +1,1 @@
-**
-!feed/
-!feed/*.py
-!infra/
-!infra/starrocks/
-!infra/starrocks/detections.sql
+../apps/feed/Dockerfile.dockerignore

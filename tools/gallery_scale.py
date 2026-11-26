@@ -62,8 +62,13 @@ def fixture(size, code):
     setup_env(folder, code)
     from identity import core as c
 
-    sys.path.insert(0, str(code / "feed"))
-    import db as feed
+    if (code / "apps/feed/src").is_dir():
+        sys.path.insert(0, str(code / "apps/feed/src"))
+        from visions_feed import db as feed
+    else:
+        # The scale harness intentionally benchmarks historical checkouts.
+        sys.path.insert(0, str(code / "feed"))
+        import db as feed
 
     feed.initialize()
     c.init()

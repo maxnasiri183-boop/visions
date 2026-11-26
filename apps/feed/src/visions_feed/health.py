@@ -1,7 +1,7 @@
 import sqlite3
 import sys
 import time
-from db import DB
+from .db import DB
 
 db = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=2)
 r = db.execute(

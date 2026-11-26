@@ -96,9 +96,9 @@ def expire(trial, compose, env_file, yunet):
             "-c",
             # Recover durable manifests and republish any uncheckpointed frames before the
             # regular retirement loop runs. The project's planner remains stopped.
-            "from worker import run; run()"
+            "from visions_feed.worker import run; run()"
             if incomplete
-            else "from db import initialize; from backend import expire; initialize(); expire()",
+            else "from visions_feed.db import initialize; from visions_feed.backend import expire; initialize(); expire()",
         ],
         env=env,
         check=True,

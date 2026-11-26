@@ -13,7 +13,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 
-from db import DATA, bounded_id, budget, connect, initialize, local, state
+from .db import DATA, bounded_id, budget, connect, initialize, local, state
 
 
 def asset(db, entry):

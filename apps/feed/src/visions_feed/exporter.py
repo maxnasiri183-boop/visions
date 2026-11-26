@@ -11,8 +11,8 @@ from collections import defaultdict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from db import DATA, DB
-from throughput import monitor_publications
+from .db import DATA, DB
+from .throughput import monitor_publications
 
 WINDOW = 300
 STAGES = (
@@ -47,7 +47,7 @@ def dist(values):
 
 
 def routine_load():
-    from backend import sql
+    from .backend import sql
 
     try:
         with sql() as db, db.cursor() as c:
@@ -75,7 +75,7 @@ def routine_load():
 
 def sample_populations():
     """Isolate table-wide counts from the fast, per-source telemetry loop."""
-    from backend import sql
+    from .backend import sql
 
     global LEGACY_GALLERY
     while True:

@@ -1,9 +1,10 @@
 x-feed: &feed
   image: ${T4_FEED_IMAGE:-visions-feed-rtsp:local}
+  entrypoint: ["python"]
   build:
-    target: python
+    target: worker
     args:
-      REVIEW_IMAGE: ${T4_REVIEW_IMAGE:-visions-review-t4:local}
+      DETECTOR_IMAGE: ${T4_DETECTOR_IMAGE:-visions-detector-gpu:latest}
 services:
   operator-feeder: *feed
   operator-exporter: *feed

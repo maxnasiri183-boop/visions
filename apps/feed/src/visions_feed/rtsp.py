@@ -10,7 +10,7 @@ import threading
 import time
 import uuid
 
-from db import DATA, bounded_id, budget, connect, initialize, state
+from .db import DATA, bounded_id, budget, connect, initialize, state
 
 STOP = threading.Event()
 RUN = os.environ.get("FEED_RUN_ID", "rtsp")

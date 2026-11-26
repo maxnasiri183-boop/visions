@@ -12,8 +12,8 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
-from retention import pressure
-from db import DATA, connect, local, state
+from .retention import pressure
+from .db import DATA, connect, local, state
 
 BUCKET = "visions-operator"
 TOPIC = "face.operator.v1"
@@ -90,7 +90,7 @@ def provision():
             pass
     with sql() as db, db.cursor() as c:
         text = (
-            open("/feed/detections.sql")
+            open(os.getenv("VISIONS_DETECTIONS_SQL", "/feed/detections.sql"))
             .read()
             .replace("visions.", "visions_operator.")
             .replace("EXISTS visions;", "EXISTS visions_operator;")

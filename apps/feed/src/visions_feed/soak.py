@@ -4,7 +4,7 @@ import json
 import os
 import sqlite3
 import time
-from db import DATA, bounded_id, connect
+from .db import DATA, bounded_id, connect
 
 INTERVAL = 10
 STALL = 45
