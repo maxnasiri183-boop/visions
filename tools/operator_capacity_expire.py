@@ -9,7 +9,7 @@ import sqlite3
 import subprocess
 import time
 
-from operator_capacity import query
+from operator_capacity import REPO, query
 
 
 def expire(trial, compose, env_file, yunet):
@@ -65,7 +65,10 @@ def expire(trial, compose, env_file, yunet):
             "docker",
         ]
     args.extend(
-        ["compose", "-p", project, "-f", str(compose), "--env-file", str(env_file)]
+        [
+            "compose", "--project-directory", str(REPO),
+            "-p", project, "-f", str(compose), "--env-file", str(env_file),
+        ]
     )
     for name in ("compose.capacity.yaml", "compose.capacity.json"):
         if (trial / name).is_file():
@@ -123,8 +126,8 @@ def expire(trial, compose, env_file, yunet):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trial", type=Path, nargs="+")
-    parser.add_argument("--compose", type=Path, default=Path("compose.feed.yaml"))
-    parser.add_argument("--env-file", type=Path, default=Path(".env"))
+    parser.add_argument("--compose", type=Path, default=REPO / "compose.feed.yaml")
+    parser.add_argument("--env-file", type=Path, default=REPO / ".env")
     parser.add_argument("--yunet", type=Path, required=True)
     args = parser.parse_args()
     for trial in args.trial:

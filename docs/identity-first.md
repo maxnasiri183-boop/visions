@@ -49,5 +49,5 @@ Run the isolated API regression with the built operator image from the repositor
 ```sh
 docker run --rm --network none -e PYTHONPATH=/feed-src:/research-src \
   -v "$PWD/apps/feed/src:/feed-src:ro" -v "$PWD/research/identity/src:/research-src:ro" -v "$PWD/tools/check_identity_first.py:/check.py:ro" \
-  visions-operator:identity-pilot python /check.py
+  visions-operator:local python /check.py
 ```

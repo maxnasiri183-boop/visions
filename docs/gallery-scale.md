@@ -93,7 +93,7 @@ Install the repository's operator and browser test dependencies and build the op
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 export CHROME_BIN=/path/to/chrome
-(cd operator && npm ci && npm run build)
+(cd apps/operator/frontend && npm ci && npm run build)
 python=./.venv/bin/python
 size=300000
 "$python" tools/gallery_scale.py fixture --size "$size"

@@ -115,7 +115,6 @@ def run_level(args, size, base, docker, seed):
         FEED_RUN_HOURS="1",
         FEED_SPEED="1",
         FEED_RETENTION_SECONDS="1800",
-        PYTHONPATH=str(REPO),
     )
     compose_prefix = docker
     if docker[0] == "sudo":
@@ -128,6 +127,8 @@ def run_level(args, size, base, docker, seed):
     compose = [
         *compose_prefix,
         "compose",
+        "--project-directory",
+        str(REPO),
         "-p",
         project,
         "-f",
@@ -364,7 +365,6 @@ class SearchClient:
 
 def index_worker():
     """Record source-frame retrieval cost around the deployed recognition implementation."""
-    sys.path.insert(0, str(REPO))
     from identity import worker
 
     original_frame = worker.Decoder.frame
@@ -386,7 +386,6 @@ def index_worker():
 
 
 def query_worker(source):
-    sys.path.insert(0, str(REPO))
     from flask import Flask
     from identity.api import bp
 
@@ -469,7 +468,6 @@ def main():
     for key in ("source", "output", "compose", "env_file", "yunet"):
         setattr(args, key, getattr(args, key).resolve())
     args.output.mkdir(mode=0o700, parents=True, exist_ok=False)
-    sys.path.insert(0, str(REPO))
     from identity.core import DDL
 
     write(args.output / "frozen-catalog.json", read(args.source / "catalog.json"))

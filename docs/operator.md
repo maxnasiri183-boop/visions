@@ -60,7 +60,7 @@ Chrome exercised the same two-face frame at 1365 and 390 CSS pixels, fullscreen,
 
 The held-out identification evaluation used a three-person gallery at a frozen cosine threshold of 0.799078. The enrolled result was 1/1 correct (exact two-sided 95% interval 2.5%–100%). Independent unenrolled probes produced 0/3 false identifications (0%–70.76%). The planning target of FPIR ≤0.1% at 1,000 enrollees remains unverified.
 
-The separate retrieval cutoff was 0.374331. Two held-out present probes each had three labeled appearances. All six appeared within the first five results for their respective probes. Macro Recall@1 was 1/3, Recall@5 was 1, and fixed-denominator Precision@5 was 0.60. Both absent probes returned zero results. The expanded test covered 836 frames across 18 distinct clips. [Aggregate results and quality breakdown](../identity/pilot-results.json)
+The separate retrieval cutoff was 0.374331. Two held-out present probes each had three labeled appearances. All six appeared within the first five results for their respective probes. Macro Recall@1 was 1/3, Recall@5 was 1, and fixed-denominator Precision@5 was 0.60. Both absent probes returned zero results. The expanded test covered 836 frames across 18 distinct clips. [Aggregate results and quality breakdown](../research/identity/pilot-results.json)
 
 The refactored speed-1 CPU acceptance passed at detection ID `def509ed-1ac9-4b70-ab22-7ef0957ec48c`. The original and replay left one logical SQL row. The complete private artifact is at `/home/ubuntu/visions/private/review-661f0cc187b5/report.json`. [Java characterization](java-worker-validation.md)
 
