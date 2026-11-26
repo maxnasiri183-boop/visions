@@ -63,7 +63,7 @@ services:
     image: visions-detector:latest
     logging: *bounded-logs
     profiles: [jobs]
-    build: .
+    build: {context: ., dockerfile: apps/detection-worker/Dockerfile}
     environment:
       KAFKA_BROKERS: kafka:9092
       S3_ENDPOINT: http://s3:9000

@@ -7,7 +7,7 @@ services:
     profiles: [gpu]
     build:
       context: .
-      dockerfile: Dockerfile.gpu
+      dockerfile: apps/detection-worker/Dockerfile.gpu
     devices:
       - nvidia.com/gpu=0
     environment:

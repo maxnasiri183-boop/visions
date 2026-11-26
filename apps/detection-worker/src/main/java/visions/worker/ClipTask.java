@@ -1,4 +1,4 @@
-package visions;
+package visions.worker;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Path;

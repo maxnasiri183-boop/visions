@@ -57,7 +57,7 @@ if ! "${docker_cli[@]}" image inspect visions-review:latest >/dev/null 2>&1; the
 fi
 "${base[@]}" up -d --wait --wait-timeout 180 kafka s3 starrocks review prometheus grafana container-monitor gpu-monitor
 if ((rebuild)) || ! "${docker_cli[@]}" image inspect "$OPERATOR_JAVA_IMAGE" >/dev/null 2>&1; then
-  "${docker_cli[@]}" build --build-arg "VISIONS_REVISION=$VISIONS_REVISION" -f Dockerfile.gpu -t "$OPERATOR_JAVA_IMAGE" .
+  "${docker_cli[@]}" build --build-arg "VISIONS_REVISION=$VISIONS_REVISION" -f apps/detection-worker/Dockerfile.gpu -t "$OPERATOR_JAVA_IMAGE" .
 fi
 if ((rebuild)) || ! "${docker_cli[@]}" image inspect visions-operator-worker:local visions-operator-feeder:local >/dev/null 2>&1; then
   "${feed[@]}" build operator-feeder operator-worker
