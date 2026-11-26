@@ -1,3 +1,4 @@
+import { routeUrl } from "./navigation";
 import { Detections } from "./Detections";
 import { Identified } from "./Identified";
 import { GalleryPage } from "./Gallery";
@@ -28,6 +29,7 @@ function read(): Route {
     appearance: q.get("appearance") || undefined,
     person: q.get("person") || undefined,
     version: q.get("version") || undefined,
+    originSource: q.get("originSource") || undefined,
     originOcc: q.get("originOcc") || undefined,
     originFrame: q.has("originFrame")
       ? Number(q.get("originFrame"))
@@ -43,11 +45,7 @@ function read(): Route {
 function App() {
   const [route, setRoute] = useState(read);
   function go(r: Route) {
-    const q = new URLSearchParams();
-    Object.entries(r).forEach(([k, v]) => {
-      if (v !== undefined) q.set(k, String(v));
-    });
-    history.pushState({ visions: true }, "", "?" + q);
+    history.pushState({ visions: true }, "", routeUrl(r));
     setRoute(r);
   }
   useEffect(() => {

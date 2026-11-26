@@ -1,3 +1,4 @@
+import { recordingMoment } from "./navigation";
 import { useData } from "./hooks";
 import { fa, Link, pts } from "./types";
 type Sighting = {
@@ -38,14 +39,7 @@ export function ReferenceAppearances({
           <button
             className="record-row"
             key={s.detection_id}
-            onClick={() =>
-              go({
-                view: "recordings",
-                occ: s.occurrence_id,
-                frame: s.frame_index,
-                face: s.detection_id,
-              })
-            }
+            onClick={() => go(recordingMoment(s, s.source_id))}
           >
             <span>
               باز کردن ویدئو · <bdi>{s.asset_id}</bdi>

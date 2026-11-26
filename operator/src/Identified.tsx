@@ -1,3 +1,4 @@
+import { observePlayback, PlayButton } from "./playback";
 import { useEffect, useRef, useState } from "react";
 import { date, fa, Link, Route } from "./types";
 import { useData } from "./hooks";
@@ -46,7 +47,7 @@ function Outline({ box }: { box: Box }) {
         width={w}
         height={h}
         fill="none"
-        stroke="#c7a3ff"
+        stroke="var(--accent-hover)"
         strokeWidth={3}
         vectorEffect="non-scaling-stroke"
       />
@@ -57,14 +58,14 @@ function Outline({ box }: { box: Box }) {
 function Clip({ span, next }: { span: Span; next: () => void }) {
   const video = useRef<HTMLVideoElement>(null),
     [time, setTime] = useState(-1);
+  const [playing, setPlaying] = useState(false);
   const [error, setError] = useState(false);
   const [start, end] = span.media_range_s;
   const nextRef = useRef(next);
   nextRef.current = next;
   useEffect(() => {
     const v = video.current!;
-    let ticket = 0,
-      finished = false;
+    let finished = false;
     function update(t: number) {
       if (t >= end && !finished) {
         finished = true;
@@ -75,11 +76,9 @@ function Clip({ span, next }: { span: Span; next: () => void }) {
       }
       if (!v.seeking) setTime(t);
     }
-    function tick(_: number, m: VideoFrameCallbackMetadata) {
-      update(m.mediaTime);
-      ticket = v.requestVideoFrameCallback(tick);
-    }
-    if (v.requestVideoFrameCallback) ticket = v.requestVideoFrameCallback(tick);
+    const unsubscribe = observePlayback(v, (t, presented) => {
+      if (presented || t >= end) update(t);
+    });
     const limit = () => {
       if (v.currentTime >= end) update(v.currentTime);
     };
@@ -94,7 +93,7 @@ function Clip({ span, next }: { span: Span; next: () => void }) {
     };
     v.addEventListener("play", replay);
     return () => {
-      if (ticket) v.cancelVideoFrameCallback(ticket);
+      unsubscribe();
       v.removeEventListener("timeupdate", limit);
       v.removeEventListener("ended", ended);
       v.removeEventListener("play", replay);
@@ -119,6 +118,8 @@ function Clip({ span, next }: { span: Span; next: () => void }) {
             video.current!.currentTime = start;
             void video.current!.play().catch(() => {});
           }}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
           onSeeking={() => setTime(-1)}
           onError={() => setError(true)}
           src={span.media_url}
@@ -126,15 +127,14 @@ function Clip({ span, next }: { span: Span; next: () => void }) {
         {box && <Outline box={box} />}
       </div>
       {error && <p role="alert">ویدیو در دسترس نیست.</p>}
-      <button
-        onClick={() => {
+      <PlayButton
+        playing={playing}
+        toggle={() => {
           const v = video.current!;
           if (v.paused) void v.play().catch(() => setError(true));
           else v.pause();
         }}
-      >
-        پخش / مکث
-      </button>
+      />
       <input
         dir="ltr"
         type="range"

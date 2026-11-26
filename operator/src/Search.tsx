@@ -1,3 +1,4 @@
+import { recordingMoment } from "./navigation";
 import { Image, Upload } from "lucide-react";
 import { bestObservation, Hit, Results } from "./appearances";
 import { useEffect, useRef, useState } from "react";
@@ -111,12 +112,7 @@ export function Search({ go }: { go: Link }) {
     }
   }
   function open(hit: Hit) {
-    go({
-      view: "recordings",
-      occ: hit.occurrence_id,
-      frame: hit.frame_index,
-      face: hit.detection_id,
-    });
+    go(recordingMoment(hit));
   }
   const groups = [...(results?.groups || [])];
   if (sort === "time")

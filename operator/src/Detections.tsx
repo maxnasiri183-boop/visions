@@ -1,3 +1,4 @@
+import { recordingMoment, routeUrl } from "./navigation";
 import { useData } from "./hooks";
 import { date, fa, Link, Route } from "./types";
 
@@ -73,16 +74,7 @@ export function Detections({ route, go }: { route: Route; go: Link }) {
           <a
             className="card"
             key={h.detection_id}
-            href={
-              "?" +
-              new URLSearchParams({
-                view: "recordings",
-                source: h.source_id,
-                occ: h.occurrence_id,
-                frame: String(h.frame_index),
-                face: h.detection_id,
-              })
-            }
+            href={routeUrl(recordingMoment(h, h.source_id))}
           >
             <img
               loading="lazy"
