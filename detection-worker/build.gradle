@@ -1,6 +1,7 @@
 plugins { id 'application' }
 dependencies {
     implementation project(':contracts')
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.6'
     implementation project(':vision-onnx')
     implementation 'org.apache.kafka:kafka-clients:3.9.1'
     implementation platform('software.amazon.awssdk:bom:2.31.78')

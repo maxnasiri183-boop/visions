@@ -2,6 +2,8 @@ package visions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,9 +30,10 @@ final class FrameProcessor {
   }
 
   private record Published(JsonNode event, String topic, int partition, long offset) {}
-  private record FrameEvent(int schema_version, String source_id, String asset_sha256,
-      String detector_version, int video_track, int frame_index, long pts, List<Integer> time_base,
-      List<Integer> frame_size, String frame_ingested_at, String manifest_key, List<Published> detections) {}
+  @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+  private record FrameEvent(int schemaVersion, String sourceId, String assetSha256,
+      String detectorVersion, int videoTrack, int frameIndex, long pts, List<Integer> timeBase,
+      List<Integer> frameSize, String frameIngestedAt, String manifestKey, List<Published> detections) {}
 
   void process(FileFeed feed, FileFeed.Frame frame, String source, String asset, boolean warmup, boolean emitFrameEvent)
       throws Exception {
@@ -39,7 +42,6 @@ final class FrameProcessor {
           "source_id", source, "frame_index", frame.index(), "pts", frame.pts(),
           "ingested_at", frame.ingested().toString(), "lag_ms", frame.lagMs())));
     }
-    String manifest = "frames/" + source + "/" + asset + "/" + VERSION + "/v0/" + frame.index() + ".json";
     var stats = new LinkedHashMap<String, Object>();
     stats.put("source", source);
     stats.put("index", frame.index());
@@ -49,10 +51,10 @@ final class FrameProcessor {
     stats.put("decode_ms", frame.decodeMs());
     stats.put("lag_ms", frame.lagMs());
     stats.put("ran_inference", false);
-    var saved = observations.resolve(manifest, frame.ingested(), () ->
-        json.writeValueAsBytes(detect(feed, frame, source, asset, stats)));
+    var saved = observations.resolveFrame(source, asset, VERSION, frame.index(), frame.ingested(),
+        json, () -> detect(feed, frame, source, asset, stats));
     stats.put("manifest_io_ms", saved.ioMs());
-    var events = json.readTree(saved.bytes());
+    var events = saved.events();
     long start = System.nanoTime();
     var published = new ArrayList<Published>(events.size());
     for (var event : events) {
@@ -62,15 +64,11 @@ final class FrameProcessor {
     stats.put("kafka_publish_ms", events.isEmpty() ? 0 : (System.nanoTime() - start) / 1e6);
     stats.put("detections", events.size());
     stats.put("wall_time", Instant.now().toEpochMilli() / 1000.0);
-    System.out.println("manifest=s3://" + observations.bucket + "/" + manifest);
+    System.out.println("manifest=" + saved.uri());
     System.out.println("frame_stats=" + json.writeValueAsString(stats));
     if (emitFrameEvent) {
-      String ingestedAt = saved.ingestedAt();
-      if (ingestedAt == null && !events.isEmpty()) {
-        ingestedAt = events.get(0).required("frame_ingested_at").asText();
-      }
       var complete = new FrameEvent(1, source, asset, VERSION, 0, frame.index(), frame.pts(),
-          feed.timeBase, List.of(feed.width, feed.height), ingestedAt, manifest, published);
+          feed.timeBase, List.of(feed.width, feed.height), saved.ingestedAt(), saved.key(), published);
       System.out.println("frame_event=" + json.writeValueAsString(complete));
     }
   }
