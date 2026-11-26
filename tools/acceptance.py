@@ -29,6 +29,12 @@ PRIVATE = Path("private")
 DOCKER = ["docker", "compose"]
 
 
+def parse_ingest_time(value: str) -> datetime:
+    # Java Instant can emit nine fractional digits. Python 3.10 accepts microseconds.
+    microseconds = re.sub(r"(\.\d{6})\d{3}Z$", r"\1Z", value)
+    return datetime.fromisoformat(microseconds.replace("Z", "+00:00"))
+
+
 def storage():
     password = os.getenv("S3_PASSWORD") or next(
         line.split("=", 1)[1]
@@ -265,7 +271,7 @@ def main():
         assert cur.fetchone()["n"] == 1
     latency = (
         observed
-        - datetime.fromisoformat(event["frame_ingested_at"].replace("Z", "+00:00"))
+        - parse_ingest_time(event["frame_ingested_at"])
     ).total_seconds()
     report = {
         "event": event,
