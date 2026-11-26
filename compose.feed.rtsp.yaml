@@ -1,13 +1,1 @@
-x-retention: &retention
-  FEED_RETENTION_MODE: disk
-  FEED_RECOVER_FREE_BYTES: ${FEED_RECOVER_FREE_BYTES:-32212254720}
-services:
-  operator-feeder:
-    command: ["rtsp.py"]
-    environment:
-      <<: *retention
-      RTSP_CAMERAS: ${RTSP_CAMERAS:?configure named RTSP camera URLs}
-  operator-worker:
-    environment: *retention
-  operator-exporter:
-    environment: *retention
+infra/compose/compose.feed.rtsp.yaml

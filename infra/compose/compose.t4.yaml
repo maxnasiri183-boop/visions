@@ -1,0 +1,21 @@
+# Use with compose.yaml and compose.gpu.yaml for the single-GPU Review workspace.
+x-worker-env: &worker-env
+  JAVA_TOOL_OPTIONS: "-Xmx512m -XX:ActiveProcessorCount=2"
+
+services:
+  detector-gpu:
+    image: ${T4_DETECTOR_IMAGE:-visions-detector-gpu:latest}
+    build:
+      args: {VISIONS_REVISION: "${VISIONS_REVISION:-unrecorded}"}
+    environment: *worker-env
+  review:
+    image: ${T4_REVIEW_IMAGE:-visions-review-t4:local}
+    build:
+      args:
+        WORKER_IMAGE: ${T4_DETECTOR_IMAGE:-visions-detector-gpu:latest}
+        VISIONS_REVISION: ${VISIONS_REVISION:-unrecorded}
+        REVIEW_RUNTIME: cuda
+    devices: [nvidia.com/gpu=0]
+    environment:
+      <<: *worker-env
+      ORT_PROVIDER: cuda

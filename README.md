@@ -1,5 +1,6 @@
 # Vision starter
 
+[What runs, where it lives and how to deploy it](docs/packaging.md)
 A CPU-based Python sample for detecting faces with YuNet and comparing two aligned face embeddings with SFace. Detection returns pixel coordinates from the upper-left corner. Verification expects exactly one detected face per image and returns a cosine similarity and a match decision.
 
 ## File feed and StarRocks

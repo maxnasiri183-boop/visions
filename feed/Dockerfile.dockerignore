@@ -1,6 +1,6 @@
 **
 !feed/
 !feed/*.py
-!deploy/
-!deploy/starrocks/
-!deploy/starrocks/detections.sql
+!infra/
+!infra/starrocks/
+!infra/starrocks/detections.sql
