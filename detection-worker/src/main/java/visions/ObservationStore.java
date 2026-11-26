@@ -1,6 +1,9 @@
 package visions;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -14,11 +17,29 @@ final class ObservationStore {
   record Saved(byte[] bytes, String ingestedAt, double ioMs) {}
   private static final String INGESTED_AT = "frame-ingested-at";
   private final S3Client client;
-  final String bucket;
+  private final String bucket;
 
   ObservationStore(S3Client client, String bucket) {
     this.client = client;
     this.bucket = bucket;
+  }
+
+  interface Detections {
+    List<Detection> compute() throws Exception;
+  }
+
+  record FrameManifest(String key, String uri, JsonNode events, String ingestedAt, double ioMs) {}
+
+  FrameManifest resolveFrame(String source, String asset, String detectorVersion, int frameIndex,
+      Instant ingested, ObjectMapper json, Detections detections) throws Exception {
+    String key = "frames/" + source + "/" + asset + "/" + detectorVersion + "/v0/" + frameIndex + ".json";
+    Saved saved = resolve(key, ingested, () -> json.writeValueAsBytes(detections.compute()));
+    JsonNode events = json.readTree(saved.bytes());
+    String originalTime = saved.ingestedAt();
+    if (originalTime == null && !events.isEmpty()) {
+      originalTime = events.get(0).required("frame_ingested_at").asText();
+    }
+    return new FrameManifest(key, "s3://" + bucket + "/" + key, events, originalTime, saved.ioMs());
   }
 
   Saved resolve(String key, Instant ingestedAt, Proposal proposal) throws Exception {

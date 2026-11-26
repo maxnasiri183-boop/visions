@@ -10,6 +10,24 @@ import software.amazon.awssdk.services.s3.model.*;
 
 public class ObservationStoreTest {
   @Test
+  public void recoversLegacyFrameTimestampWithoutInvokingDetector() throws Exception {
+    var client = new S3Client() {
+      @Override public String serviceName() { return "s3"; }
+      @Override public void close() {}
+      @Override public ResponseBytes<GetObjectResponse> getObjectAsBytes(GetObjectRequest request) {
+        assertEquals("frames/camera/asset/model/v0/4.json", request.key());
+        return ResponseBytes.fromByteArray(GetObjectResponse.builder().build(),
+            "[{\"frame_ingested_at\":\"original\"}]".getBytes(StandardCharsets.UTF_8));
+      }
+    };
+    var manifest = new ObservationStore(client, "archive").resolveFrame("camera", "asset",
+        "model", 4, java.time.Instant.EPOCH, new com.fasterxml.jackson.databind.ObjectMapper(),
+        () -> { throw new AssertionError("cached frame was redetected"); });
+    assertEquals("original", manifest.ingestedAt());
+    assertEquals("s3://archive/" + manifest.key(), manifest.uri());
+  }
+
+  @Test
   public void conditionalConflictUsesWinnersBytes() throws Exception {
     byte[] winner = "[{\"detection_id\":\"peer\"}]".getBytes(StandardCharsets.UTF_8);
     var client = new S3Client() {
