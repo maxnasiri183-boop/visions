@@ -1,17 +1,7 @@
 **
-!apps/
-!apps/operator/
 !apps/operator/pyproject.toml
-!apps/operator/src/
-!apps/operator/src/identity/
 !apps/operator/src/identity/*.py
-!apps/operator/src/visions_operator/
 !apps/operator/src/visions_operator/*.py
-!apps/operator/src/visions_operator/dist/
 !apps/operator/src/visions_operator/dist/**
-!research/
-!research/identity/
 !research/identity/pyproject.toml
-!research/identity/src/
-!research/identity/src/identity/
 !research/identity/src/identity/*.py
