@@ -1,3 +1,5 @@
+import { observePlayback, PlayButton } from "./playback";
+import { recordingMoment } from "./navigation";
 import { FeedSpeed } from "./FeedSpeed";
 import { FaceOverlay } from "./FaceOverlay";
 import {
@@ -9,8 +11,6 @@ import {
   ListVideo,
   Maximize,
   Minimize,
-  Pause,
-  Play,
   ScanFace,
   SkipBack,
   SkipForward,
@@ -85,6 +85,7 @@ export function VideoPage({ route, go }: { route: Route; go: Link }) {
               onClick={() =>
                 go({
                   view: route.originView || "recordings",
+                  source: route.originSource,
                   occ: route.originOcc,
                   frame: route.originFrame,
                   face: route.originFace,
@@ -288,7 +289,6 @@ function Player({ rec, route, go, follow, keep, onLive, freeze, liveTime }: Play
   }, []);
   useEffect(() => {
     const video = v.current!;
-    let ticket = 0;
     function display(pts: number) {
       const limit = liveLimit.current;
       if (limit !== undefined && pts >= limit && !video.paused) {
@@ -300,18 +300,7 @@ function Player({ rec, route, go, follow, keep, onLive, freeze, liveTime }: Play
         setClock(pts);
       }
     }
-    function tick(_: number, metadata: VideoFrameCallbackMetadata) {
-      display(metadata.mediaTime);
-      ticket = video.requestVideoFrameCallback(tick);
-    }
-    const updateTime = () => display(video.currentTime);
-    if (video.requestVideoFrameCallback)
-      ticket = video.requestVideoFrameCallback(tick);
-    else video.addEventListener("timeupdate", updateTime);
-    return () => {
-      if (ticket) video.cancelVideoFrameCallback(ticket);
-      video.removeEventListener("timeupdate", updateTime);
-    };
+    return observePlayback(video, display);
   }, []);
   const mobile = useMedia("(max-width: 760px)");
   const [dismissed, setDismissed] = useState<string>(),
@@ -441,11 +430,9 @@ function Player({ rec, route, go, follow, keep, onLive, freeze, liveTime }: Play
                 onChange={(e) => seekHere(+e.target.value)}
               />
               <div className="transport" dir="ltr">
-                <button
-                  className="icon-only"
-                  aria-label={playing ? "توقف" : "پخش"}
-                  title={playing ? "توقف" : "پخش"}
-                  onClick={() => {
+                <PlayButton
+                  playing={playing}
+                  toggle={() => {
                     keep();
                     if (playing) v.current?.pause();
                     else
@@ -453,9 +440,7 @@ function Player({ rec, route, go, follow, keep, onLive, freeze, liveTime }: Play
                         ?.play()
                         .catch(() => setMediaError("پخش انجام نشد."));
                   }}
-                >
-                  {playing ? <Pause /> : <Play />}
-                </button>
+                />
                 <button
                   className="icon-only"
                   aria-label="فریم قبلی"
@@ -527,10 +512,8 @@ function Player({ rec, route, go, follow, keep, onLive, freeze, liveTime }: Play
               assetId={rec.asset_id}
               onOpen={(hit) =>
                 go({
-                  view: "recordings",
-                  occ: hit.occurrence_id,
-                  frame: hit.frame_index,
-                  face: hit.detection_id,
+                  ...recordingMoment(hit),
+                  originSource: route.originOcc ? route.originSource : route.source,
                   originView:
                     route.originView ||
                     (route.view === "live" ? "live" : "recordings"),

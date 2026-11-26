@@ -1,3 +1,4 @@
+import { recordingMoment } from "./navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -267,12 +268,7 @@ function GlobalSearch({ go }: { go: Link }) {
         event: { source_id: string; frame_index: number; detection_id: string };
       }>("/api/operator/details/" + q, { signal: run.signal });
       if (!run.signal.aborted)
-        go({
-          view: "recordings",
-          occ: r.event.source_id,
-          frame: r.event.frame_index,
-          face: r.event.detection_id,
-        });
+        go(recordingMoment({ ...r.event, occurrence_id: r.event.source_id }));
     } catch {
       if (!run.signal.aborted)
         setErr("این مشاهده در داده‌های نگهداری‌شده پیدا نشد.");

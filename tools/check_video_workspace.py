@@ -40,7 +40,7 @@ def database(root):
 OBSERVATION = """
 SELECT o.detection_id,o.occurrence_id,o.frame_index,o.crop_path,o.event_json,
        f.media_pts_s,d.state,d.version,d.score,d.reference_id,d.threshold,
-       r.person_id,r.display_name,r.sha256 AS reference_sha256,u.asset_id
+       r.person_id,r.display_name,r.sha256 AS reference_sha256,u.asset_id,u.source_id
 FROM observations o JOIN decisions d USING(detection_id)
 JOIN occurrences u USING(occurrence_id) JOIN frames f USING(occurrence_id,frame_index)
 LEFT JOIN refs r USING(reference_id)
@@ -103,6 +103,8 @@ def fixtures(root):
 
 def address(base, row, select=True):
     query = dict(view="recordings", occ=row["occurrence_id"], frame=row["frame_index"])
+    if row.get("source_id"):
+        query["source"] = row["source_id"]
     if select:
         query["face"] = row["detection_id"]
     return base + "/?" + urlencode(query)
@@ -285,6 +287,7 @@ async def desktop_case(page, base, root, out, known, unknown, empty, poor, repor
     await decision(page, hit)
     await button(page, RETURN).click()
     await decision(page, known)
+    assert parse_qs(urlparse(page.url).query)["source"] == [known["source_id"]]
     await capture(page, out, "original-moment-restored")
     await page.reload()
     await decision(page, known)
