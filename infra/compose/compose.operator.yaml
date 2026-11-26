@@ -3,7 +3,7 @@ x-common: &operator
   image: visions-operator:local
   build:
     context: .
-    dockerfile: operator/Dockerfile
+    dockerfile: apps/operator/Dockerfile
     args: {VISIONS_REVISION: "${VISIONS_REVISION:-unrecorded}"}
   init: true
   user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"

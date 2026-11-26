@@ -36,7 +36,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 ui=("${docker_cli[@]}" compose --env-file .env -f compose.operator.yaml)
 build_ui() {
-  (cd operator && npm ci --prefer-offline --no-audit --no-fund && npm run build)
+  (cd apps/operator/frontend && npm ci --prefer-offline --no-audit --no-fund && npm run build)
   "${ui[@]}" build operator-ui
 }
 if ((ui_only)); then

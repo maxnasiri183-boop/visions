@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visions-identity-research"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["visions-operator==0.1.0", "numpy==1.26.4", "opencv-python-headless==4.11.0.86"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["identity"]

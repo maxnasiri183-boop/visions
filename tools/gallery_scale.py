@@ -40,9 +40,15 @@ def load_module(name, path):
     return module
 
 
+def server_source(code):
+    packaged = code / "apps/operator/src/visions_operator/server.py"
+    return packaged if packaged.is_file() else code / "operator/server.py"
+
+
 def setup_env(folder, code):
     os.environ.update(OPERATOR_ROOT=str(folder), OPERATOR_DATA=str(folder))
-    sys.path.insert(0, str(code))
+    application = code / "apps/operator/src"
+    sys.path.insert(0, str(application if application.is_dir() else code))
 
 
 def fixture(size, code):
@@ -341,7 +347,7 @@ def serve(size, code, port):
     setup_env(folder, code)
     os.environ["GALLERY_FIXTURE"] = "1"
     app = load_module(
-        "gallery_scale_operator_server", code / "operator" / "server.py"
+        "gallery_scale_operator_server", server_source(code)
     ).create_app()
     run(app, host="127.0.0.1", port=port, threads=4)
 
@@ -785,7 +791,7 @@ def sql_plans(size, code):
     setup_env(folder, code)
     os.environ["GALLERY_FIXTURE"] = "1"
     app = load_module(
-        "gallery_scale_plan_server", code / "operator" / "server.py"
+        "gallery_scale_plan_server", server_source(code)
     ).create_app()
     client = app.test_client()
     first = client.get("/api/identity/people?limit=24")

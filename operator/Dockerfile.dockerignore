@@ -1,8 +1,1 @@
-**
-!identity/
-!identity/*.py
-!operator/
-!operator/requirements.txt
-!operator/server.py
-!operator/dist/
-!operator/dist/**
+../apps/operator/Dockerfile.dockerignore
