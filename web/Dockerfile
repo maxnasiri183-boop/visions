@@ -22,5 +22,7 @@ COPY tools/acceptance.py tools/acceptance.py
 COPY deploy/starrocks/detections.sql deploy/starrocks/detections.sql
 COPY web/*.py web/
 COPY web/static web/static
-ENV PYTHONPATH=/app/tools:/app/web
+ARG VISIONS_REVISION=unrecorded
+LABEL org.opencontainers.image.revision=$VISIONS_REVISION
+ENV VISIONS_REVISION=$VISIONS_REVISION PYTHONPATH=/app/tools:/app/web
 CMD ["python","web/app.py"]
