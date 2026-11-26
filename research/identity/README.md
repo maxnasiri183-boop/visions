@@ -20,7 +20,7 @@ Within each occurrence, hits at most three frame indices apart can join one appe
 
 ## Prepare and verify the research pilot
 
-Use the operator image's Python environment, or install `numpy==1.26.4 opencv-python-headless==4.11.0.86 Flask Pillow` in a local Python 3.12 environment with FFmpeg. Set `OPERATOR_ROOT` to the absolute private operator-data directory and `IDENTITY_YUNET` to the pinned YuNet file. The application and worker need the same private directory. Use the following commands from the repo root for a **new private research setup**.
+Use the operator Dockerfile’s `research` target, or install both Python distributions in a local Python 3.12 environment with FFmpeg and ffprobe on PATH. Set `OPERATOR_ROOT` to the absolute private operator-data directory and `IDENTITY_YUNET` to the pinned YuNet file. The application and worker need the same private directory. Use the following commands from the repo root for a **new private research setup**.
 
 ```sh
 python -m identity.setup --research-vidtimit

@@ -12,6 +12,7 @@ ENV VISIONS_REVISION=$VISIONS_REVISION
 CMD ["visions-operator"]
 
 FROM operator AS research
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY research/identity /build/
 RUN pip install --no-cache-dir /build && rm -rf /build
 
