@@ -3,7 +3,8 @@
 !tools/acceptance.py
 !tools/requirements-review.txt
 !deploy/
-!deploy/detections.sql
+!deploy/starrocks/
+!deploy/starrocks/detections.sql
 !web/
 !web/*.py
 !web/requirements.txt

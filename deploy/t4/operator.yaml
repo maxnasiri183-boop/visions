@@ -1,0 +1,15 @@
+x-operator: &operator
+  image: ${T4_OPERATOR_IMAGE:-visions-operator:detections}
+  security_opt: !reset []
+  entrypoint: ["/usr/bin/setpriv", "--no-new-privs"]
+  environment:
+    IDENTITY_FIRST_PILOT: ${IDENTITY_FIRST_PILOT:-1}
+services:
+  operator-ui:
+    <<: *operator
+    command: ["python", "operator/server.py"]
+    environment:
+      IDENTITY_FIRST_PILOT: ${IDENTITY_FIRST_PILOT:-1}
+      OPERATOR_LIVE_RUN: ${FEED_RUN_ID:?configure the camera run}
+  recognition:
+    <<: *operator

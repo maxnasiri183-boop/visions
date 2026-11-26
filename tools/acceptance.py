@@ -71,7 +71,7 @@ def provision():
         if not any(str(r["Alive"]).lower() == "true" for r in cur.fetchall()):
             raise RuntimeError("StarRocks BE not ready")
         for statement in (
-            Path("deploy/detections.sql").read_text().strip().rstrip(";").split(";")
+            Path("deploy/starrocks/detections.sql").read_text().strip().rstrip(";").split(";")
         ):
             if statement.strip().startswith("CREATE ROUTINE LOAD"):
                 cur.execute("SHOW ROUTINE LOAD")

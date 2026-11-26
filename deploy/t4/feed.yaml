@@ -1,0 +1,15 @@
+x-feed: &feed
+  image: ${T4_FEED_IMAGE:-visions-feed-rtsp:local}
+services:
+  operator-feeder: *feed
+  operator-exporter: *feed
+  operator-soak: *feed
+  operator-worker:
+    <<: *feed
+    entrypoint: ["python", "worker.py"]
+    command: []
+    devices: !reset []
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "0"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
