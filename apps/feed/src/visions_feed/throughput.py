@@ -6,8 +6,8 @@ import json
 import os
 import time
 
-from backend import TOPIC
-from db import connect
+from .backend import TOPIC
+from .db import connect
 
 
 def install(db):

@@ -10,7 +10,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from backend import (
+from .backend import (
     BUCKET,
     expire,
     provision,
@@ -18,7 +18,7 @@ from backend import (
     visibility_loop,
     search_visibility_loop,
 )
-from db import DATA, budget, busy, connect, initialize, local, state
+from .db import DATA, budget, busy, connect, initialize, local, state
 
 STOP = threading.Event()
 CHILDREN = set()

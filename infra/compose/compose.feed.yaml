@@ -3,7 +3,7 @@ x-feeder: &feeder
   image: visions-operator-feeder:local
   build:
     context: .
-    dockerfile: feed/Dockerfile
+    dockerfile: apps/feed/Dockerfile
     target: python
     args: {VISIONS_REVISION: "${VISIONS_REVISION:-unrecorded}"}
   user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
@@ -41,7 +41,7 @@ services:
     image: visions-operator-worker:local
     build:
       context: .
-      dockerfile: feed/Dockerfile
+      dockerfile: apps/feed/Dockerfile
       target: worker
       args:
         DETECTOR_IMAGE: "${OPERATOR_JAVA_IMAGE:-visions-detector-gpu-operator:local}"

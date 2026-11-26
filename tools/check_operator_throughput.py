@@ -16,8 +16,7 @@ from urllib.request import Request, urlopen
 
 from kafka import KafkaConsumer, KafkaProducer, TopicPartition
 
-sys.path.insert(0, "/feed")
-from backend import TOPIC, sql
+from visions_feed.backend import TOPIC, sql
 
 SOURCE = "replay-lab"
 RUN = os.environ["FEED_RUN_ID"]

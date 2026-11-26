@@ -47,7 +47,7 @@ Run `python -m identity.evaluate_sightings /path/to/visits.json 1 2` with the de
 Run the isolated API regression with the built operator image from the repository root:
 
 ```sh
-docker run --rm --network none -e PYTHONPATH=/feed:/srv \
-  -v "$PWD/feed:/feed:ro" -v "$PWD/tools/check_identity_first.py:/check.py:ro" \
+docker run --rm --network none -e PYTHONPATH=/feed-src:/srv \
+  -v "$PWD/apps/feed/src:/feed-src:ro" -v "$PWD/tools/check_identity_first.py:/check.py:ro" \
   visions-operator:identity-pilot python /check.py
 ```

@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as tmp:
     app = Flask(__name__)
     app.register_blueprint(bp)
     client = app.test_client()
-    from db import initialize
+    from visions_feed.db import initialize
 
     initialize()
     (root / "preview").touch()

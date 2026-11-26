@@ -4,7 +4,7 @@ import os
 import shutil
 import time
 
-from db import DATA
+from .db import DATA
 
 
 def pressure(db, free=None):

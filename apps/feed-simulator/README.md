@@ -18,8 +18,8 @@ RTSP_CAMERAS={"shib":"rtsp://rtsp:8554/shib","shib2":"rtsp://rtsp:8554/shib2"}
 ```sh
 mkdir -p private/simulator-cache
 docker compose -f compose.rtsp.yaml up -d
-docker build --target python --build-arg REVIEW_IMAGE=visions-review-t4:local \
-  -t visions-feed-rtsp:local -f feed/Dockerfile .
+docker build --target worker --build-arg DETECTOR_IMAGE=visions-detector-gpu:latest \
+  -t visions-feed-rtsp:local -f apps/feed/Dockerfile .
 (cd operator && npm run build)
 docker build -t visions-operator:detections -f operator/Dockerfile .
 docker compose --env-file .env --env-file private/operator-rtsp.env \
@@ -30,7 +30,7 @@ docker compose --env-file .env --env-file private/operator-rtsp.env \
   up -d --no-build --no-deps --wait operator-ui recognition
 ```
 
-For a revision-pinned rollout, save `VISIONS_REVISION`, `T4_DETECTOR_IMAGE`, `T4_REVIEW_IMAGE`, `T4_FEED_IMAGE`, `T4_OPERATOR_IMAGE` and `SIM_FFMPEG_IMAGE` in the private deployment environment. Use the full merged commit as the image tag and point the simulator at the tagged Review image. Pass this same environment to the backend, simulator, feed and operator Compose commands. Build the detector first, then Review, feed and operator. The T4 feed services share the CUDA Review runtime. Verify the live revision and browser assets with `tools/check_deployed_revision.sh "$VISIONS_REVISION"`.
+For a revision-pinned rollout, save `VISIONS_REVISION`, `T4_DETECTOR_IMAGE`, `T4_REVIEW_IMAGE`, `T4_FEED_IMAGE`, `T4_OPERATOR_IMAGE` and `SIM_FFMPEG_IMAGE` in the private deployment environment. Use the full merged commit as the image tag and point the simulator at the tagged Review image. Pass this same environment to the backend, simulator, feed and operator Compose commands. Build the detector first, then Review, feed and operator. The T4 feed services share the detector runtime and installed feed package. Verify the live revision and browser assets with `tools/check_deployed_revision.sh "$VISIONS_REVISION"`.
 
 The operator UI listens on VM loopback port 8092. Choose a camera in Live, or select a retained segment in Recordings. The operator dashboard in Grafana on port 13000 exposes retained duration, skipped frames, disk space and cleanup state.
 

@@ -6,7 +6,7 @@ x-publisher: &publisher
   user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
   entrypoint: ["/bin/sh","/sim/publish.sh"]
   volumes:
-    - ./feedsimulator:/sim:ro
+    - ./apps/feed-simulator:/sim:ro
     - ${SIM_INPUTS:-./feed/sample_videos}:/inputs:ro
     - ./private/simulator-cache:/cache
   depends_on: [rtsp]
