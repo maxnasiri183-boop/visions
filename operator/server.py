@@ -324,31 +324,25 @@ def crop(identity):
 def original(identifier):
     from io import BytesIO
     import cv2
+    from identity.media import Decoder
 
     with closing(feed()) as db:
         row = one(
             db,
-            """SELECT o.frame_index, u.input_path FROM observations o
+            """SELECT o.occurrence_id, o.frame_index, u.input_path FROM observations o
             JOIN occurrences u USING(occurrence_id) WHERE o.detection_id=?""",
             (identifier,),
         )
-    path = (DATA / row["input_path"]).resolve()
-    if not path.is_relative_to(DATA) or not path.is_file():
-        abort(410)
-    stream = cv2.VideoCapture(str(path), cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 1])
     try:
-        if row["frame_index"] and not stream.set(
-            cv2.CAP_PROP_POS_FRAMES, row["frame_index"]
-        ):
-            abort(422)
-        ok, frame = stream.read()
-        if not ok:
-            abort(422)
+        with closing(Decoder(DATA)) as decoder:
+            frame = decoder.frame(row["occurrence_id"], row["input_path"], row["frame_index"])
         ok, png = cv2.imencode(".png", frame)
         if not ok:
             abort(422)
-    finally:
-        stream.release()
+    except FileNotFoundError:
+        abort(410)
+    except (ValueError, cv2.error):
+        abort(422)
     return send_file(BytesIO(png.tobytes()), mimetype="image/png")
 
 
