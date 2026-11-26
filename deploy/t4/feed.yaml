@@ -1,5 +1,9 @@
 x-feed: &feed
   image: ${T4_FEED_IMAGE:-visions-feed-rtsp:local}
+  build:
+    target: python
+    args:
+      REVIEW_IMAGE: ${T4_REVIEW_IMAGE:-visions-review-t4:local}
 services:
   operator-feeder: *feed
   operator-exporter: *feed

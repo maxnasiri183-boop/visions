@@ -4,12 +4,16 @@ x-worker-env: &worker-env
 
 services:
   detector-gpu:
+    image: ${T4_DETECTOR_IMAGE:-visions-detector-gpu:latest}
+    build:
+      args: {VISIONS_REVISION: "${VISIONS_REVISION:-unrecorded}"}
     environment: *worker-env
   review:
-    image: visions-review-t4:local
+    image: ${T4_REVIEW_IMAGE:-visions-review-t4:local}
     build:
       args:
-        WORKER_IMAGE: visions-detector-gpu:latest
+        WORKER_IMAGE: ${T4_DETECTOR_IMAGE:-visions-detector-gpu:latest}
+        VISIONS_REVISION: ${VISIONS_REVISION:-unrecorded}
         REVIEW_RUNTIME: cuda
     devices: [nvidia.com/gpu=0]
     environment:
