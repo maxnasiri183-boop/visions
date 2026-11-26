@@ -19,7 +19,7 @@ WORKDIR /app
 COPY tools/requirements-review.txt web/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements-review.txt -r requirements.txt
 COPY tools/acceptance.py tools/acceptance.py
-COPY deploy/starrocks/detections.sql deploy/starrocks/detections.sql
+COPY infra/starrocks/detections.sql infra/starrocks/detections.sql
 COPY web/*.py web/
 COPY web/static web/static
 ARG VISIONS_REVISION=unrecorded

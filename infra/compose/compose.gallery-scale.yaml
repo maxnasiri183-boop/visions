@@ -1,0 +1,19 @@
+name: visions-gallery-scale
+services:
+  gallery-scale:
+    image: visions-operator:local
+    environment: {GALLERY_FIXTURE: "1"}
+    user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
+    volumes:
+      - ${GALLERY_SCALE_PATH:-./private/gallery-scale/300000}:/data
+    ports: ["127.0.0.1:8094:8092"]
+    restart: unless-stopped
+    init: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health',timeout=3)"]
+      interval: 15s
+      timeout: 4s
+      retries: 4
+    logging: {driver: json-file, options: {max-size: 5m, max-file: "2"}}

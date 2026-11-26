@@ -1,0 +1,46 @@
+name: visions-operator
+x-common: &operator
+  image: visions-operator:local
+  build:
+    context: .
+    dockerfile: operator/Dockerfile
+    args: {VISIONS_REVISION: "${VISIONS_REVISION:-unrecorded}"}
+  init: true
+  user: "${REVIEW_UID:-1000}:${REVIEW_GID:-1000}"
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  volumes:
+    - ${OPERATOR_DATA_HOST:-./private/operator}:/data
+    - ${YUNET_MODEL_HOST:-./private/yunet.onnx}:/models/yunet.onnx:ro
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+services:
+  operator-ui:
+    <<: *operator
+    environment:
+      IDENTITY_FIRST_PILOT: ${IDENTITY_FIRST_PILOT:-0}
+      OPERATOR_LIVE_RUN: ${OPERATOR_LIVE_RUN:-}
+    networks: [default, monitoring]
+    ports: ["127.0.0.1:8092:8092"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  recognition:
+    <<: *operator
+    environment:
+      IDENTITY_FIRST_PILOT: ${IDENTITY_FIRST_PILOT:-0}
+    command: ["python","-m","identity.worker","--opencv-threads","${RECOGNITION_OPENCV_THREADS:-4}"]
+    healthcheck:
+      test: ["CMD","python","-c","import os,time; assert time.time()-os.stat('/tmp/visions-recognition.ready').st_mtime < 20"]
+      interval: 10s
+      timeout: 3s
+      retries: 4
+      start_period: 20s
+networks:
+  monitoring:
+    external: true
+    name: ${VISION_NETWORK:-visions_default}

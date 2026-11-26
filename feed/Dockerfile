@@ -2,7 +2,7 @@ ARG REVIEW_IMAGE=visions-review:latest
 ARG DETECTOR_IMAGE=visions-detector-gpu-operator:local
 FROM ${REVIEW_IMAGE} AS python
 COPY feed/*.py /feed/
-COPY deploy/starrocks/detections.sql /feed/
+COPY infra/starrocks/detections.sql /feed/
 WORKDIR /feed
 ARG VISIONS_REVISION=unrecorded
 LABEL org.opencontainers.image.revision=$VISIONS_REVISION
