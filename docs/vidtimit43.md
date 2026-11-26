@@ -16,7 +16,7 @@ C. Sanderson and B. C. Lovell. *Multi-Region Probabilistic Histograms for Robust
 
 ## Private import
 
-From the repository root, with the project's Python environment, FFmpeg and ffprobe installed, run:
+Install the runtime and research distributions in the project virtual environment with `.venv/bin/python -m pip install ./apps/operator ./research/identity`. With FFmpeg and ffprobe on PATH, run the importer from the repository root.
 
 ```bash
 .venv/bin/python -m identity.import_vidtimit \
